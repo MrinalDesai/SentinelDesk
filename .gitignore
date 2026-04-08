@@ -1,0 +1,8 @@
+venv/
+__pycache__/
+*.pyc
+.env
+*.exe
+data/synthetic_tickets.csv
+*.log
+.streamlit/
