@@ -212,38 +212,29 @@ def build_enriched_prompt(
 
     return f"""You are an expert IT ticket classifier.
 
-Category signatures:{signatures}
+Each category has UNIQUE technical terms that ONLY appear in that category:
+{signatures}
 
-Ticket: {title}. {description[:300]}
+Ticket to classify:
+Title: {title}
+Description: {description[:300]}
 
-CRITICAL RULES - each category is MUTUALLY EXCLUSIVE:
-- Infrastructure = PHYSICAL hardware ONLY: server rack, PSU, motherboard, BIOS, UPS, cooling fan, bare metal, chassis, DIMM, NIC card
-- Application = SOFTWARE ONLY: API errors, app crashes, HTTP codes, null pointer, deployment, heap, cron job, microservice, OutOfMemoryError
-- Security = CYBER THREATS ONLY: ransomware, phishing, malware, breach, unauthorized, privilege escalation, dark web, zero day exploit, DLP alert, port scanning, brute force, credential leak — ANY threat/attack = Security
-- Database = DATA LAYER ONLY: MySQL, Oracle, PostgreSQL, deadlock, replication, tablespace, stored procedure, binary log, connection pool
-- Storage = DISK/FILE ONLY: NAS, SAN, RAID, iSCSI, tape library, thin provisioned, snapshot, NFS, CIFS, deduplication — iSCSI is Storage NOT Infrastructure
-- Network = CONNECTIVITY ONLY: VPN, DNS, BGP, firewall ACL, packet loss, WiFi, VLAN, DHCP, spanning tree, proxy PAC
-- KEY: zero day and port scanning = Security NOT Network or Infrastructure
-- KEY: iSCSI and tape library = Storage NOT Infrastructure
-- KEY: DLP alert = Security NOT Application
+Rules:
+1. Match ticket keywords to category signatures above
+2. Each category is mutually exclusive
+3. Security = malware/breach/phishing/ransomware
+4. Infrastructure = hardware/server/rack/bios
+5. Network = vpn/bgp/dns/firewall/vlan
+6. Database = sql/mysql/oracle/replication
+7. Storage = nas/san/iscsi/raid/backup
+8. Application = api/app/software/deployment
 
-Return ONLY this JSON — use the ACTUAL category from the ticket not this example:
+Return ONLY this JSON:
 {{
-    "category": "Storage",
-    "confidence": 0.85,
+    "category": "Infrastructure",
+    "confidence": 0.92,
     "reasoning": "specific keyword that matched"
 }}"""
-#85percent
-# CRITICAL RULES - each category is MUTUALLY EXCLUSIVE:
-# - Infrastructure = PHYSICAL hardware ONLY: server rack, PSU, motherboard, BIOS, UPS, cooling fan, bare metal, chassis
-# - Application = SOFTWARE ONLY: API errors, app crashes, HTTP codes, null pointer, deployment, heap, cron job, microservice
-# - Security = THREATS ONLY: ransomware, phishing, malware, breach, unauthorized access, privilege escalation, dark web
-# - Database = DATA LAYER ONLY: MySQL, Oracle, PostgreSQL, deadlock, replication, tablespace, stored procedure, binary log
-# - Storage = DISK/FILE ONLY: NAS, SAN, RAID, iSCSI, tape library, thin provisioned, snapshot, NFS, CIFS, deduplication — NOT physical hardware
-# - Network = CONNECTIVITY ONLY: VPN, DNS, BGP, firewall ACL, packet loss, WiFi, VLAN, DHCP, spanning tree
-# - KEY: tape library and thin provisioned = Storage NOT Infrastructure
-# - KEY: server rack and PSU = Infrastructure NOT Storage
-# - KEY: null pointer and HTTP codes = Application NOT Infrastructure
 # def build_enriched_prompt(
 #     title: str,
 #     description: str,

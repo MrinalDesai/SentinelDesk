@@ -112,11 +112,23 @@ def classify_ticket(title: str, description: str) -> dict:
     prompt = build_classification_prompt(title, description)
     
     try:
+        # response = ollama.chat(
+        #     model=settings.LLM_MODEL,
+        #     messages=[{"role": "user", "content": prompt}]
+        # )
         response = ollama.chat(
             model=settings.LLM_MODEL,
-            messages=[{"role": "user", "content": prompt}]
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are an expert IT ticket classifier. Always choose the most specific category. Never default to one category. Analyze the ticket carefully."
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ]
         )
-        
         content = response['message']['content'].strip()
         
         # Clean JSON

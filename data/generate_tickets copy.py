@@ -11,6 +11,8 @@ from loguru import logger
 
 PRIORITIES = ["Low", "Medium", "High", "Critical"]
 
+# MUTUALLY EXCLUSIVE issue prompts
+# Each category uses UNIQUE terminology not shared with others
 PROMPTS = {
     "Infrastructure": [
         "physical server hardware failure in data center rack",
@@ -98,6 +100,7 @@ PROMPTS = {
     ]
 }
 
+# MUTUALLY EXCLUSIVE keyword sets — no overlap between categories
 EXCLUSIVE_KEYWORDS = {
     "Infrastructure": [
         "bare metal", "rack mount", "psu", "dimm", "bios",
@@ -135,12 +138,10 @@ EXCLUSIVE_KEYWORDS = {
     ]
 }
 
-CSV_PATH = "data/synthetic_tickets.csv"
-TARGET_PER_CATEGORY = 166
-
 def generate_ticket(category: str, issue: str) -> dict:
+    # Get exclusive keywords for this category
     keywords = ', '.join(EXCLUSIVE_KEYWORDS[category][:5])
-
+    
     prompt = f"""Generate a realistic IT support ticket.
 
 Issue type: {issue}
@@ -166,9 +167,10 @@ No markdown. No explanation. JSON only."""
                 }
             ]
         )
-
+        
         content = response['message']['content'].strip()
-
+        
+        # Clean markdown
         if "```" in content:
             parts = content.split("```")
             for part in parts:
@@ -177,110 +179,60 @@ No markdown. No explanation. JSON only."""
                     break
         if content.startswith("json"):
             content = content[4:].strip()
-
+        
+        # Extract JSON
         match = re.search(r'\{.*\}', content, re.DOTALL)
         if match:
             content = match.group()
-
+        
         ticket = json.loads(content)
         ticket['priority'] = random.choice(PRIORITIES)
-        ticket['category'] = category
+        ticket['category'] = category  # Always force correct category
         return ticket
-
+        
     except Exception as e:
-        logger.error(f"Error: {e}")
+        logger.error(f"Error generating {category} ticket: {e}")
         return None
 
-
-def save_tickets(new_tickets: list):
-    """Append new tickets to CSV — safe checkpoint saving"""
-    if not new_tickets:
-        return
-    df_new = pd.DataFrame(new_tickets).fillna("")
-    if os.path.exists(CSV_PATH):
-        df_existing = pd.read_csv(CSV_PATH).fillna("")
-        df_combined = pd.concat([df_existing, df_new], ignore_index=True)
-        df_combined.to_csv(CSV_PATH, index=False)
-        logger.success(f"Checkpoint saved — {len(df_combined)} total tickets")
-    else:
-        df_new.to_csv(CSV_PATH, index=False)
-        logger.success(f"Checkpoint saved — {len(df_new)} tickets")
-
-
-def get_existing_counts() -> dict:
-    """Get how many tickets exist per category"""
-    if not os.path.exists(CSV_PATH):
-        return {}
-    df = pd.read_csv(CSV_PATH).fillna("")
-    return df['category'].value_counts().to_dict()
-
-
-def generate_category(category: str, needed: int):
-    """Generate tickets for one category with checkpoint saving"""
-    issues = PROMPTS[category]
-    buffer = []
-    generated = 0
-    attempts = 0
-    max_attempts = needed * 4
-
-    logger.info(f"Generating {needed} tickets for {category}...")
-
-    while generated < needed and attempts < max_attempts:
-        issue = random.choice(issues)
-        attempts += 1
-
-        logger.info(f"{category} {generated+1}/{needed}: {issue[:50]}")
-
-        ticket = generate_ticket(category, issue)
-
-        if ticket:
-            buffer.append(ticket)
-            generated += 1
-
-            # Save every 10 tickets
-            if len(buffer) >= 10:
-                save_tickets(buffer)
-                buffer = []
-
-    # Save any remaining
-    if buffer:
-        save_tickets(buffer)
-
-    logger.success(f"{category}: {generated}/{needed} done")
-    return generated
+def generate_dataset(total_tickets: int = 1000):
+    tickets = []
+    per_category = total_tickets // len(EXCLUSIVE_KEYWORDS)
+    
+    logger.info(
+        f"Generating {total_tickets} mutually exclusive tickets "
+        f"({per_category} per category)..."
+    )
+    
+    for category in EXCLUSIVE_KEYWORDS.keys():
+        issues = PROMPTS[category]
+        count = 0
+        attempts = 0
+        max_attempts = per_category * 3
+        
+        while count < per_category and attempts < max_attempts:
+            issue = random.choice(issues)
+            attempts += 1
+            
+            logger.info(
+                f"{category} {count+1}/{per_category}: "
+                f"{issue[:40]}"
+            )
+            
+            ticket = generate_ticket(category, issue)
+            
+            if ticket:
+                tickets.append(ticket)
+                count += 1
+        
+        logger.success(f"{category}: {count} tickets done")
+    
+    df = pd.DataFrame(tickets)
+    df = df.fillna("")
+    df.to_csv("data/synthetic_tickets.csv", index=False)
+    logger.success(f"Saved {len(df)} tickets")
+    return df
 
 if __name__ == "__main__":
-    # Ask how many tickets per category
-    try:
-        TARGET_PER_CATEGORY = int(input(f"Tickets per category? (default {TARGET_PER_CATEGORY}): ") or TARGET_PER_CATEGORY)
-    except ValueError:
-        pass
-    logger.info(f"Target: {TARGET_PER_CATEGORY} per category = {TARGET_PER_CATEGORY * 6} total")
-
-    # Check what we already have
-    existing = get_existing_counts()
-    logger.info(f"Existing tickets: {sum(existing.values())}")
-    for cat, count in existing.items():
-        logger.info(f"  {cat}: {count}")
-
-    # Generate only what is missing
-    total_generated = 0
-    for category in EXCLUSIVE_KEYWORDS.keys():
-        current = existing.get(category, 0)
-        needed = TARGET_PER_CATEGORY - current
-
-        if needed <= 0:
-            logger.info(f"Skipping {category} — already have {current}")
-            continue
-
-        logger.info(f"{category}: need {needed} more (have {current})")
-        generated = generate_category(category, needed)
-        total_generated += generated
-
-    # Final summary
-    final = get_existing_counts()
-    total = sum(final.values())
-    logger.success(f"\nFINAL TOTAL: {total} tickets")
-    for cat, count in final.items():
-        status = "✅" if count >= TARGET_PER_CATEGORY else "⚠️"
-        logger.info(f"  {status} {cat}: {count}/{TARGET_PER_CATEGORY}")
+    df = generate_dataset(1000)
+    print(f"\nTotal: {len(df)}")
+    print(df['category'].value_counts())
