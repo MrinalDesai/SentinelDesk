@@ -51,12 +51,46 @@ DOMAIN_SIGNATURES = {
     ]
 }
 
-def build_classification_prompt(title: str, description: str) -> str:
-    signatures = ""
-    for cat, keywords in DOMAIN_SIGNATURES.items():
-        signatures += f"\n{cat}: {', '.join(keywords[:6])}"
+# def build_classification_prompt(title: str, description: str) -> str:
+#     signatures = ""
+#     for cat, keywords in DOMAIN_SIGNATURES.items():
+#         signatures += f"\n{cat}: {', '.join(keywords[:6])}"
     
-    return f"""You are an IT ticket classifier for an enterprise IT system.
+#     return f"""You are an IT ticket classifier for an enterprise IT system.
+
+# Domain signatures:{signatures}
+
+# Classify this ticket into EXACTLY ONE category.
+
+# Ticket Title: {title}
+# Ticket Description: {description}
+
+# Rules:
+# - Choose only from: Infrastructure, Application, Security, Database, Storage, Network
+# - confidence must be a decimal between 0.0 and 1.0
+# - Return ONLY valid JSON, no explanation
+
+# Return this exact JSON format:
+# {{
+#     "category": "Network",
+#     "confidence": 0.92,
+#     "reasoning": "one line reason"
+# }}"""
+
+def build_classification_prompt(title: str, description: str) -> str:
+    # Load n-gram vocabulary
+    try:
+        from utils.ngram_extractor import load_vocabulary, build_enriched_prompt
+        vocabulary = load_vocabulary()
+        return build_enriched_prompt(title, description, vocabulary)
+    except Exception as e:
+        logger.warning(f"N-gram vocab failed, using defaults: {e}")
+        # Fallback to basic prompt
+        signatures = ""
+        for cat, keywords in DOMAIN_SIGNATURES.items():
+            signatures += f"\n{cat}: {', '.join(keywords[:6])}"
+        
+        return f"""You are an IT ticket classifier.
 
 Domain signatures:{signatures}
 
@@ -65,12 +99,7 @@ Classify this ticket into EXACTLY ONE category.
 Ticket Title: {title}
 Ticket Description: {description}
 
-Rules:
-- Choose only from: Infrastructure, Application, Security, Database, Storage, Network
-- confidence must be a decimal between 0.0 and 1.0
-- Return ONLY valid JSON, no explanation
-
-Return this exact JSON format:
+Return ONLY this JSON:
 {{
     "category": "Network",
     "confidence": 0.92,
