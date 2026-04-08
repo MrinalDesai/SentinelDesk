@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: sentineldesk_qdrant
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16
+    container_name: sentineldesk_postgres
+    environment:
+      POSTGRES_PASSWORD: sentineldesk123
+      POSTGRES_DB: sentineldesk
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  qdrant_data:
+  postgres_data:
