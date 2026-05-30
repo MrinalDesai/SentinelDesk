@@ -1,0 +1,43 @@
+title,description,category,priority
+VPN keeps dropping,VPN connection drops every few minutes when working from home,Network,Medium
+Cannot reach internal site,internal website unreachable DNS resolution failing on the subnet,Network,High
+Slow wifi in office,wifi bandwidth very slow packet loss on the wireless access point,Network,Low
+Firewall blocking port,firewall rule blocking outbound port for the new service,Network,Medium
+Latency to datacenter,high network latency routing between branch and datacenter,Network,Medium
+Switch port down,network switch port flapping uplink unstable,Network,High
+App throws error,application crashes with null pointer exception on checkout page,Application,High
+Login button broken,web app login button unresponsive frontend javascript error,Application,Medium
+API returns 500,backend api returning internal server error on the orders endpoint,Application,High
+Slow page load,application page load time degraded after the last deployment,Application,Medium
+Feature not working,new reporting feature in the app fails to render charts,Application,Low
+Memory leak in service,application service memory usage climbing heap leak suspected,Application,High
+Disk almost full,storage volume nearly full disk usage at ninety eight percent,Storage,High
+NAS not mounting,network attached storage NAS share will not mount on the server,Storage,Medium
+Backup failed,nightly backup job failed insufficient storage space,Storage,High
+Slow file access,file read performance slow on the shared storage array,Storage,Low
+Expand volume,need to expand the storage volume capacity for the archive,Storage,Medium
+Snapshot error,storage snapshot creation failing on the SAN,Storage,Medium
+Query very slow,database query extremely slow missing index full table scan,Database,High
+Cannot connect to DB,application cannot connect to the database connection pool exhausted,Database,High
+Replication lag,database replication lag growing between primary and replica,Database,Medium
+Deadlock errors,frequent database deadlock errors on concurrent transactions,Database,Medium
+Restore backup,need to restore database from last night backup,Database,High
+Table locked,database table locked long running transaction blocking writes,Database,Medium
+Server high CPU,server cpu utilization pegged at hundred percent kernel load,Infrastructure,High
+VM wont boot,virtual machine fails to boot after host reboot,Infrastructure,High
+Out of memory,server out of memory OOM killer terminated the process,Infrastructure,High
+Patch the host,need to apply OS patches to the production host servers,Infrastructure,Medium
+Container crash,docker container keeps restarting on the kubernetes node,Infrastructure,Medium
+Provision new server,provision a new virtual server with eight cores,Infrastructure,Low
+Account locked,user account locked after three failed password attempts,Access Management,High
+SSO not working,single sign on SAML authentication failing for all users,Access Management,High
+MFA code not received,multi factor authentication OTP not received on mobile,Access Management,Medium
+Password reset,user needs password reset cannot access the portal,Access Management,Medium
+Add to group,add user to the finance security group active directory,Access Management,Low
+Permission denied,user gets permission denied accessing the shared folder,Access Management,Medium
+Phishing email,user reports phishing email with suspicious attachment,Security,High
+Suspicious login,suspicious login attempt from unknown foreign ip address,Security,High
+Brute force,brute force attack detected against the admin account,Security,High
+Vulnerability scan,vulnerability scan found critical CVE on the web server,Security,High
+Malware quarantine,antivirus quarantined a trojan on the workstation,Security,Medium
+Audit firewall logs,review firewall logs for unauthorized access attempts,Security,Medium

@@ -1,0 +1,10 @@
+user,role,action,domain,reads_pii
+alice,viewer,view,,False
+alice,viewer,resolve,,False
+bob,agent,route,Network,False
+bob,agent,resolve,Security,False
+bob,agent,read_pii,,True
+carol,soc_analyst,resolve,Security,False
+carol,soc_analyst,read_pii,Security,True
+dave,admin,admin,,False
+eve,guest,view,,False

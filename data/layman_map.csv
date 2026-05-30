@@ -1,0 +1,89 @@
+category,technical_term,layman_phrasings
+Network,vpn tunnel,can't connect to work from home | remote access not working | vpn won't connect
+Network,dns resolution,websites won't load | internet not working | can't reach the site
+Network,firewall rule,site is blocked | connection refused | can't access the app
+Network,packet loss,connection keeps dropping | laggy and choppy | calls breaking up
+Network,subnet,on the wrong network | can't see other computers
+Network,vlan,wrong network segment | isolated from the network
+Network,switch port,ethernet not connecting | no link light | network port dead
+Network,routing table,traffic going the wrong way | can't reach a location
+Network,gateway,no internet at all | everything offline
+Network,bandwidth,internet is slow | downloads crawling | everything sluggish online
+Network,dhcp lease,no ip address | limited connectivity | didn't get network settings
+Network,wifi,wifi keeps dropping | no wireless signal | can't get on wifi
+Network,latency,slow response | high ping | everything lags
+Network,mtu,large files won't send | hangs on big transfers
+Application,null pointer exception,app crashed | page broke | it threw an error
+Application,stack trace,big error message | red error wall | crash log
+Application,api endpoint,the service isn't responding | integration broken
+Application,deployment,after the update it broke | new release has issues
+Application,microservice,one part of the app is down | a service isn't working
+Application,build pipeline,the build failed | ci is red | can't ship the release
+Application,code regression,worked yesterday broken today | the fix broke something
+Application,frontend,the page looks broken | buttons don't work | ui glitch
+Application,backend,server side error | data not saving
+Application,exception thrown,error popped up | app threw an error
+Application,rest call,request failing | api call returns an error
+Application,payload,data not sending right | wrong info submitted
+Application,rollback,revert the update | go back to the old version
+Database,query plan,report runs slow | search takes forever
+Database,missing index,lookups are slow | search crawling
+Database,deadlock,transactions stuck | two things locked up
+Database,replication lag,data out of sync | changes not showing on the copy
+Database,connection pool,too many connections | can't connect to the database
+Database,table lock,records frozen | can't update the data
+Database,transaction rollback,save didn't go through | changes reverted
+Database,slow query,the report is slow | loading takes ages
+Database,schema migration,after the db update | table change broke things
+Database,primary replica,main vs backup db issue | failover problem
+Database,vacuum,database bloated | cleanup needed
+Database,stored procedure,the saved routine failing | db function error
+Storage,disk full,no space left | can't save files | drive is full
+Storage,volume capacity,running out of space | storage nearly full
+Storage,nas mount,shared drive not showing | network folder missing
+Storage,san,storage array issue | big storage down
+Storage,snapshot,backup point failed | can't take a snapshot
+Storage,raid array,a drive failed | disk redundancy degraded
+Storage,filesystem,drive corrupted | files unreadable
+Storage,inode,too many files | can't create files even with space
+Storage,block storage,attached disk issue | volume not mounting
+Storage,quota exceeded,over the storage limit | can't upload limit reached
+Storage,archive tier,old files moved away | cold storage slow
+Storage,lun,storage unit not visible | disk unit missing
+Storage,mount point,drive not mounted | folder path missing
+Infrastructure,cpu utilization,server maxed out | machine running hot | cpu at 100
+Infrastructure,memory exhaustion,out of memory | ran out of ram | low memory
+Infrastructure,oom killer,process got killed | app shut down on its own
+Infrastructure,host reboot,server restarted | machine rebooted unexpectedly
+Infrastructure,hypervisor,the host running the vms | virtualization layer issue
+Infrastructure,virtual machine,the vm is down | virtual server not booting
+Infrastructure,kubernetes node,a node is down | worker not ready
+Infrastructure,pod restart,container keeps restarting | app keeps respawning
+Infrastructure,load average,server overloaded | machine bogged down
+Infrastructure,kernel panic,server crashed hard | kernel crash
+Infrastructure,cgroup,resource limits hit | container throttled
+Infrastructure,node taint,workloads won't schedule there | node blocked
+Access Management,account locked,locked out | can't log in after retries | account disabled
+Access Management,password reset,forgot password | need to reset my password | password expired
+Access Management,single sign,sso not working | can't log in through the portal
+Access Management,saml assertion,login redirect failing | sso handshake broke
+Access Management,mfa otp,didn't get the code | 2fa not arriving | authenticator issue
+Access Management,ldap sync,directory not updating | group changes not reflecting
+Access Management,active directory,domain login issue | can't reach the directory
+Access Management,group membership,wrong permissions | not in the right group
+Access Management,permission denied,access denied | can't open the folder | no access
+Access Management,user provisioning,new hire account setup | need access granted
+Access Management,okta,okta login failing | can't get into okta apps
+Access Management,role assignment,wrong role | need elevated access
+Security,phishing,suspicious email | got a scam email | fake login link
+Security,malware,virus on my computer | infected machine | weird popups
+Security,ransomware,files locked with ransom note | everything encrypted
+Security,brute force,lots of failed logins | someone trying to break in
+Security,vulnerability,security hole | needs patching | found a weakness
+Security,cve,known security flaw | published vulnerability
+Security,suspicious login,login from a strange place | someone logged in as me
+Security,unauthorized access,someone got in | access they shouldn't have
+Security,intrusion,breach detected | attacker inside
+Security,credential theft,password stolen | account compromised
+Security,threat actor,an attacker | bad actor targeting us
+Security,exploit attempt,someone trying to hack | attack on the server

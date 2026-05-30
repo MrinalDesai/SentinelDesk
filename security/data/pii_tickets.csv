@@ -1,0 +1,41 @@
+id,text
+0,Dr Patel reports mailbox full. Forward to user254@example.com; server IP 10.37.48.94.
+1,"Payment failed for card 4328 2013 7499 1812. Account holder Mr Smith, SSN 326-15-3181."
+2,Access request: Mrs Garcia (user247@example.com) needs AD group membership. Phone 555-653-2929.
+3,"User Ms Johnson cannot log in. Email user608@example.com, phone 555-796-9711. Reset from IP 10.218.160.120."
+4,Ticket from Prof Lee: VPN drops. Contact user407@example.com or 555-637-9111.
+5,"Database deadlock reported by Mrs Garcia. Callback 555-140-2271, escalate via user531@example.com."
+6,Mr Smith reports mailbox full. Forward to user162@example.com; server IP 10.228.145.184.
+7,Ticket from Mr Smith: VPN drops. Contact user323@example.com or 555-886-5709.
+8,"Database deadlock reported by Mrs Garcia. Callback 555-663-5561, escalate via user984@example.com."
+9,Ticket from Ms Johnson: VPN drops. Contact user112@example.com or 555-596-3987.
+10,Ticket from Prof Lee: VPN drops. Contact user732@example.com or 555-770-1884.
+11,Access request: Mr Smith (user313@example.com) needs AD group membership. Phone 555-551-3659.
+12,Mr Smith reports mailbox full. Forward to user172@example.com; server IP 10.192.76.163.
+13,Access request: Mrs Garcia (user595@example.com) needs AD group membership. Phone 555-419-2407.
+14,Ticket from Dr Patel: VPN drops. Contact user250@example.com or 555-806-9899.
+15,Access request: Prof Lee (user654@example.com) needs AD group membership. Phone 555-897-9236.
+16,"User Mrs Garcia cannot log in. Email user464@example.com, phone 555-848-1474. Reset from IP 10.14.143.121."
+17,Ms Johnson reports mailbox full. Forward to user204@example.com; server IP 10.100.172.53.
+18,Ticket from Ms Johnson: VPN drops. Contact user589@example.com or 555-282-8109.
+19,"Database deadlock reported by Ms Johnson. Callback 555-254-8624, escalate via user128@example.com."
+20,Ticket from Mr Smith: VPN drops. Contact user639@example.com or 555-867-3281.
+21,Access request: Prof Lee (user433@example.com) needs AD group membership. Phone 555-365-9918.
+22,Access request: Ms Johnson (user636@example.com) needs AD group membership. Phone 555-622-1306.
+23,Access request: Mr Smith (user433@example.com) needs AD group membership. Phone 555-798-9492.
+24,Mrs Garcia reports mailbox full. Forward to user675@example.com; server IP 10.226.166.157.
+25,"User Prof Lee cannot log in. Email user353@example.com, phone 555-815-9572. Reset from IP 10.132.103.216."
+26,Ticket from Ms Johnson: VPN drops. Contact user538@example.com or 555-174-4484.
+27,"Payment failed for card 4541 9447 7616 6556. Account holder Mr Smith, SSN 531-35-6842."
+28,Access request: Mr Smith (user839@example.com) needs AD group membership. Phone 555-474-1319.
+29,"Database deadlock reported by Mr Smith. Callback 555-907-4744, escalate via user215@example.com."
+30,"Database deadlock reported by Dr Patel. Callback 555-252-9791, escalate via user515@example.com."
+31,"Payment failed for card 4983 2993 8434 1189. Account holder Mr Smith, SSN 447-80-7844."
+32,Access request: Prof Lee (user232@example.com) needs AD group membership. Phone 555-144-9632.
+33,Access request: Ms Johnson (user396@example.com) needs AD group membership. Phone 555-556-9193.
+34,"Database deadlock reported by Ms Johnson. Callback 555-586-5025, escalate via user626@example.com."
+35,Ms Johnson reports mailbox full. Forward to user335@example.com; server IP 10.71.207.254.
+36,"User Ms Johnson cannot log in. Email user156@example.com, phone 555-186-7240. Reset from IP 10.144.124.178."
+37,"User Dr Patel cannot log in. Email user472@example.com, phone 555-436-9963. Reset from IP 10.165.125.9."
+38,"User Mrs Garcia cannot log in. Email user385@example.com, phone 555-614-4292. Reset from IP 10.127.2.24."
+39,"User Dr Patel cannot log in. Email user411@example.com, phone 555-744-4814. Reset from IP 10.43.79.169."

@@ -1,0 +1,11 @@
+rank,Access Management,Application,Database,Infrastructure,Network,Security,Storage
+1,user (534),application (770),database (915),node (468),network (601),access (537),storage (539)
+2,issue (424),domain (282),connection (341),memory (398),issue (409),unauthorized (401),nas (405)
+3,saml (356),issue (282),replication (336),issue (361),dns (300),unauthorized access (355),issue (391)
+4,directory (342),api (280),issue (328),exhaustion (333),resolution (245),system (299),mount (373)
+5,access (329),application domain (280),lag (316),memory exhaustion (269),dns resolution (235),incident (269),volume (370)
+6,ldap (291),pipeline (254),pool (259),kubernetes (262),connectivity (231),ransomware (247),capacity (245)
+7,active (279),error (254),replication lag (233),pod (240),loss (216),user (238),array (244)
+8,assertion (276),endpoint (238),migration (230),hypervisor (237),user (215),credential (237),nas mount (215)
+9,sync (271),build (226),performance (226),experiencing (209),intermittent (210),theft (221),disk (204)
+10,active directory (258),experiencing (196),experiencing (219),issues (181),subnet (209),security (203),raid (197)

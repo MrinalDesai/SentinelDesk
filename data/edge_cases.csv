@@ -1,0 +1,106 @@
+title,description,category,resolution,priority,request_type
+can't reach a location,people complaining can't reach a location; connection keeps dropping across the office,Network,,Medium,Incident
+internet not working,users report internet not working; everything lags since this morning,Network,,Medium,Incident
+websites won't load,we're seeing websites won't load; slow response across the office,Network,,Medium,Incident
+can't reach the site,people complaining can't reach the site; limited connectivity across the office,Network,,Medium,Incident
+isolated from the network,"heads up, isolated from the network; can't reach the site for a bunch of people",Network,,Medium,Incident
+websites won't load,users report websites won't load; hangs on big transfers for the whole team,Network,,Medium,Incident
+websites won't load,"heads up, websites won't load; hangs on big transfers for a bunch of people",Network,,Medium,Incident
+websites won't load,users report websites won't load; wrong network segment again,Network,,Medium,Incident
+can't access the app,people complaining can't access the app; network port dead for the whole team,Network,,Medium,Incident
+everything lags,"heads up, everything lags; connection refused since this morning",Network,,Medium,Incident
+large files won't send,users report large files won't send; calls breaking up again,Network,,Medium,Incident
+hangs on big transfers,tickets coming in: hangs on big transfers; on the wrong network across the office,Network,,Medium,Incident
+large files won't send,"heads up, large files won't send; internet not working across the office",Network,,Medium,Incident
+can't see other computers,"heads up, can't see other computers; can't get on wifi for a bunch of people",Network,,Medium,Incident
+can't reach a location,"heads up, can't reach a location; wifi keeps dropping for a bunch of people",Network,,Medium,Incident
+a service isn't working,we're seeing a service isn't working; new release has issues for the whole team,Application,,Medium,Incident
+error popped up,we're seeing error popped up; request failing across the office,Application,,Medium,Incident
+buttons don't work,"heads up, buttons don't work; new release has issues for a bunch of people",Application,,Medium,Incident
+revert the update,people complaining revert the update; one part of the app is down since this morning,Application,,Medium,Incident
+ui glitch,users report ui glitch; it threw an error again,Application,,Medium,Incident
+ci is red,tickets coming in: ci is red; crash log for the whole team,Application,,Medium,Incident
+go back to the old version,people complaining go back to the old version; worked yesterday broken today across the office,Application,,Medium,Incident
+data not saving,"heads up, data not saving; it threw an error again",Application,,Medium,Incident
+api call returns an error,tickets coming in: api call returns an error; revert the update since this morning,Application,,Medium,Incident
+error popped up,"heads up, error popped up; a service isn't working for a bunch of people",Application,,Medium,Incident
+buttons don't work,people complaining buttons don't work; api call returns an error across the office,Application,,Medium,Incident
+data not sending right,tickets coming in: data not sending right; it threw an error for a bunch of people,Application,,Medium,Incident
+error popped up,users report error popped up; data not saving across the office,Application,,Medium,Incident
+app threw an error,tickets coming in: app threw an error; error popped up again,Application,,Medium,Incident
+data not saving,people complaining data not saving; data not sending right since this morning,Application,,Medium,Incident
+the saved routine failing,tickets coming in: the saved routine failing; save didn't go through across the office,Database,,Medium,Incident
+the report is slow,we're seeing the report is slow; can't update the data again,Database,,Medium,Incident
+search crawling,users report search crawling; loading takes ages for the whole team,Database,,Medium,Incident
+can't connect to the database,we're seeing can't connect to the database; transactions stuck for a bunch of people,Database,,Medium,Incident
+save didn't go through,users report save didn't go through; loading takes ages for the whole team,Database,,Medium,Incident
+the report is slow,"heads up, the report is slow; save didn't go through since this morning",Database,,Medium,Incident
+transactions stuck,"heads up, transactions stuck; changes reverted since this morning",Database,,Medium,Incident
+the saved routine failing,tickets coming in: the saved routine failing; changes reverted for a bunch of people,Database,,Medium,Incident
+changes not showing on the copy,users report changes not showing on the copy; transactions stuck for the whole team,Database,,Medium,Incident
+transactions stuck,we're seeing transactions stuck; changes not showing on the copy across the office,Database,,Medium,Incident
+loading takes ages,we're seeing loading takes ages; main vs backup db issue since this morning,Database,,Medium,Incident
+can't connect to the database,we're seeing can't connect to the database; report runs slow for a bunch of people,Database,,Medium,Incident
+table change broke things,"heads up, table change broke things; can't update the data again",Database,,Medium,Incident
+records frozen,"heads up, records frozen; transactions stuck again",Database,,Medium,Incident
+database bloated,users report database bloated; cleanup needed for a bunch of people,Database,,Medium,Incident
+disk unit missing,"heads up, disk unit missing; old files moved away for a bunch of people",Storage,,Medium,Incident
+disk redundancy degraded,people complaining disk redundancy degraded; running out of space for a bunch of people,Storage,,Medium,Incident
+can't save files,users report can't save files; network folder missing for the whole team,Storage,,Medium,Incident
+files unreadable,users report files unreadable; shared drive not showing since this morning,Storage,,Medium,Incident
+over the storage limit,users report over the storage limit; can't save files across the office,Storage,,Medium,Incident
+volume not mounting,"heads up, volume not mounting; storage nearly full across the office",Storage,,Medium,Incident
+a drive failed,users report a drive failed; over the storage limit across the office,Storage,,Medium,Incident
+network folder missing,people complaining network folder missing; over the storage limit for the whole team,Storage,,Medium,Incident
+can't upload limit reached,tickets coming in: can't upload limit reached; big storage down again,Storage,,Medium,Incident
+a drive failed,users report a drive failed; too many files across the office,Storage,,Medium,Incident
+too many files,people complaining too many files; files unreadable for a bunch of people,Storage,,Medium,Incident
+backup point failed,we're seeing backup point failed; drive is full across the office,Storage,,Medium,Incident
+storage unit not visible,tickets coming in: storage unit not visible; can't take a snapshot for a bunch of people,Storage,,Medium,Incident
+folder path missing,we're seeing folder path missing; cold storage slow again,Storage,,Medium,Incident
+no space left,"heads up, no space left; network folder missing since this morning",Storage,,Medium,Incident
+ran out of ram,"heads up, ran out of ram; resource limits hit across the office",Infrastructure,,Medium,Incident
+workloads won't schedule there,tickets coming in: workloads won't schedule there; container keeps restarting across the office,Infrastructure,,Medium,Incident
+resource limits hit,"heads up, resource limits hit; server restarted since this morning",Infrastructure,,Medium,Incident
+low memory,we're seeing low memory; virtualization layer issue again,Infrastructure,,Medium,Incident
+app keeps respawning,"heads up, app keeps respawning; workloads won't schedule there since this morning",Infrastructure,,Medium,Incident
+server crashed hard,"heads up, server crashed hard; app shut down on its own for the whole team",Infrastructure,,Medium,Incident
+node blocked,people complaining node blocked; app shut down on its own for the whole team,Infrastructure,,Medium,Incident
+process got killed,people complaining process got killed; container keeps restarting since this morning,Infrastructure,,Medium,Incident
+container throttled,users report container throttled; server maxed out since this morning,Infrastructure,,Medium,Incident
+worker not ready,we're seeing worker not ready; server restarted again,Infrastructure,,Medium,Incident
+virtualization layer issue,tickets coming in: virtualization layer issue; a node is down since this morning,Infrastructure,,Medium,Incident
+cpu at 100,users report cpu at 100; app shut down on its own for the whole team,Infrastructure,,Medium,Incident
+worker not ready,tickets coming in: worker not ready; process got killed for the whole team,Infrastructure,,Medium,Incident
+worker not ready,"heads up, worker not ready; machine bogged down across the office",Infrastructure,,Medium,Incident
+worker not ready,tickets coming in: worker not ready; server crashed hard across the office,Infrastructure,,Medium,Incident
+wrong role,users report wrong role; no access for a bunch of people,Access Management,,Medium,Incident
+can't get into okta apps,we're seeing can't get into okta apps; new hire account setup for a bunch of people,Access Management,,Medium,Incident
+password expired,tickets coming in: password expired; directory not updating across the office,Access Management,,Medium,Incident
+can't get into okta apps,people complaining can't get into okta apps; need access granted for a bunch of people,Access Management,,Medium,Incident
+authenticator issue,users report authenticator issue; need access granted for the whole team,Access Management,,Medium,Incident
+password expired,users report password expired; need to reset my password for the whole team,Access Management,,Medium,Incident
+not in the right group,we're seeing not in the right group; group changes not reflecting again,Access Management,,Medium,Incident
+wrong role,people complaining wrong role; access denied since this morning,Access Management,,Medium,Incident
+need to reset my password,"heads up, need to reset my password; wrong permissions for the whole team",Access Management,,Medium,Incident
+locked out,users report locked out; can't get into okta apps again,Access Management,,Medium,Incident
+need access granted,people complaining need access granted; need to reset my password for the whole team,Access Management,,Medium,Incident
+wrong role,we're seeing wrong role; need elevated access across the office,Access Management,,Medium,Incident
+login redirect failing,tickets coming in: login redirect failing; sso not working again,Access Management,,Medium,Incident
+can't log in through the portal,"heads up, can't log in through the portal; okta login failing since this morning",Access Management,,Medium,Incident
+login redirect failing,people complaining login redirect failing; wrong permissions for the whole team,Access Management,,Medium,Incident
+got a scam email,tickets coming in: got a scam email; an attacker for a bunch of people,Security,,Medium,Incident
+password stolen,"heads up, password stolen; access they shouldn't have for a bunch of people",Security,,Medium,Incident
+attack on the server,we're seeing attack on the server; someone logged in as me again,Security,,Medium,Incident
+infected machine,"heads up, infected machine; someone logged in as me across the office",Security,,Medium,Incident
+published vulnerability,we're seeing published vulnerability; bad actor targeting us again,Security,,Medium,Incident
+suspicious email,we're seeing suspicious email; bad actor targeting us for the whole team,Security,,Medium,Incident
+infected machine,"heads up, infected machine; login from a strange place across the office",Security,,Medium,Incident
+someone got in,tickets coming in: someone got in; got a scam email again,Security,,Medium,Incident
+someone logged in as me,people complaining someone logged in as me; someone got in across the office,Security,,Medium,Incident
+someone got in,we're seeing someone got in; got a scam email for the whole team,Security,,Medium,Incident
+lots of failed logins,users report lots of failed logins; got a scam email again,Security,,Medium,Incident
+published vulnerability,users report published vulnerability; someone got in across the office,Security,,Medium,Incident
+published vulnerability,"heads up, published vulnerability; security hole again",Security,,Medium,Incident
+breach detected,we're seeing breach detected; someone logged in as me since this morning,Security,,Medium,Incident
+published vulnerability,"heads up, published vulnerability; someone logged in as me for a bunch of people",Security,,Medium,Incident

@@ -1,0 +1,120 @@
+"""
+Curated technical -> layman mapping for the signature lexicon.
+
+This is the human-written counterpart to Layer 4 enrichment (Algo 4): for each
+discriminative technical term, the casual phrasings a real user would type.
+It serves three roles:
+  1. a high-quality seed the LLM enrichment augments (not replaces),
+  2. the recall dictionary for the deterministic scorer on layman input,
+  3. the held-out *evaluation* register (train formal, test with these casual
+     phrasings) so the enrichment layer's value is provable in the ablation.
+
+Keys match SIGNATURE_LEXICON exactly (a test enforces coverage).
+"""
+
+from __future__ import annotations
+
+LAYMAN_MAP: dict[str, dict[str, list[str]]] = {
+    "Network": {
+        "vpn tunnel": ["can't connect to work from home", "remote access not working", "vpn won't connect"],
+        "dns resolution": ["websites won't load", "internet not working", "can't reach the site"],
+        "firewall rule": ["site is blocked", "connection refused", "can't access the app"],
+        "packet loss": ["connection keeps dropping", "laggy and choppy", "calls breaking up"],
+        "subnet": ["on the wrong network", "can't see other computers"],
+        "vlan": ["wrong network segment", "isolated from the network"],
+        "switch port": ["ethernet not connecting", "no link light", "network port dead"],
+        "routing table": ["traffic going the wrong way", "can't reach a location"],
+        "gateway": ["no internet at all", "everything offline"],
+        "bandwidth": ["internet is slow", "downloads crawling", "everything sluggish online"],
+        "dhcp lease": ["no ip address", "limited connectivity", "didn't get network settings"],
+        "wifi": ["wifi keeps dropping", "no wireless signal", "can't get on wifi"],
+        "latency": ["slow response", "high ping", "everything lags"],
+        "mtu": ["large files won't send", "hangs on big transfers"],
+    },
+    "Application": {
+        "null pointer exception": ["app crashed", "page broke", "it threw an error"],
+        "stack trace": ["big error message", "red error wall", "crash log"],
+        "api endpoint": ["the service isn't responding", "integration broken"],
+        "deployment": ["after the update it broke", "new release has issues"],
+        "microservice": ["one part of the app is down", "a service isn't working"],
+        "build pipeline": ["the build failed", "ci is red", "can't ship the release"],
+        "code regression": ["worked yesterday broken today", "the fix broke something"],
+        "frontend": ["the page looks broken", "buttons don't work", "ui glitch"],
+        "backend": ["server side error", "data not saving"],
+        "exception thrown": ["error popped up", "app threw an error"],
+        "rest call": ["request failing", "api call returns an error"],
+        "payload": ["data not sending right", "wrong info submitted"],
+        "rollback": ["revert the update", "go back to the old version"],
+    },
+    "Database": {
+        "query plan": ["report runs slow", "search takes forever"],
+        "missing index": ["lookups are slow", "search crawling"],
+        "deadlock": ["transactions stuck", "two things locked up"],
+        "replication lag": ["data out of sync", "changes not showing on the copy"],
+        "connection pool": ["too many connections", "can't connect to the database"],
+        "table lock": ["records frozen", "can't update the data"],
+        "transaction rollback": ["save didn't go through", "changes reverted"],
+        "slow query": ["the report is slow", "loading takes ages"],
+        "schema migration": ["after the db update", "table change broke things"],
+        "primary replica": ["main vs backup db issue", "failover problem"],
+        "vacuum": ["database bloated", "cleanup needed"],
+        "stored procedure": ["the saved routine failing", "db function error"],
+    },
+    "Storage": {
+        "disk full": ["no space left", "can't save files", "drive is full"],
+        "volume capacity": ["running out of space", "storage nearly full"],
+        "nas mount": ["shared drive not showing", "network folder missing"],
+        "san": ["storage array issue", "big storage down"],
+        "snapshot": ["backup point failed", "can't take a snapshot"],
+        "raid array": ["a drive failed", "disk redundancy degraded"],
+        "filesystem": ["drive corrupted", "files unreadable"],
+        "inode": ["too many files", "can't create files even with space"],
+        "block storage": ["attached disk issue", "volume not mounting"],
+        "quota exceeded": ["over the storage limit", "can't upload limit reached"],
+        "archive tier": ["old files moved away", "cold storage slow"],
+        "lun": ["storage unit not visible", "disk unit missing"],
+        "mount point": ["drive not mounted", "folder path missing"],
+    },
+    "Infrastructure": {
+        "cpu utilization": ["server maxed out", "machine running hot", "cpu at 100"],
+        "memory exhaustion": ["out of memory", "ran out of ram", "low memory"],
+        "oom killer": ["process got killed", "app shut down on its own"],
+        "host reboot": ["server restarted", "machine rebooted unexpectedly"],
+        "hypervisor": ["the host running the vms", "virtualization layer issue"],
+        "virtual machine": ["the vm is down", "virtual server not booting"],
+        "kubernetes node": ["a node is down", "worker not ready"],
+        "pod restart": ["container keeps restarting", "app keeps respawning"],
+        "load average": ["server overloaded", "machine bogged down"],
+        "kernel panic": ["server crashed hard", "kernel crash"],
+        "cgroup": ["resource limits hit", "container throttled"],
+        "node taint": ["workloads won't schedule there", "node blocked"],
+    },
+    "Access Management": {
+        "account locked": ["locked out", "can't log in after retries", "account disabled"],
+        "password reset": ["forgot password", "need to reset my password", "password expired"],
+        "single sign": ["sso not working", "can't log in through the portal"],
+        "saml assertion": ["login redirect failing", "sso handshake broke"],
+        "mfa otp": ["didn't get the code", "2fa not arriving", "authenticator issue"],
+        "ldap sync": ["directory not updating", "group changes not reflecting"],
+        "active directory": ["domain login issue", "can't reach the directory"],
+        "group membership": ["wrong permissions", "not in the right group"],
+        "permission denied": ["access denied", "can't open the folder", "no access"],
+        "user provisioning": ["new hire account setup", "need access granted"],
+        "okta": ["okta login failing", "can't get into okta apps"],
+        "role assignment": ["wrong role", "need elevated access"],
+    },
+    "Security": {
+        "phishing": ["suspicious email", "got a scam email", "fake login link"],
+        "malware": ["virus on my computer", "infected machine", "weird popups"],
+        "ransomware": ["files locked with ransom note", "everything encrypted"],
+        "brute force": ["lots of failed logins", "someone trying to break in"],
+        "vulnerability": ["security hole", "needs patching", "found a weakness"],
+        "cve": ["known security flaw", "published vulnerability"],
+        "suspicious login": ["login from a strange place", "someone logged in as me"],
+        "unauthorized access": ["someone got in", "access they shouldn't have"],
+        "intrusion": ["breach detected", "attacker inside"],
+        "credential theft": ["password stolen", "account compromised"],
+        "threat actor": ["an attacker", "bad actor targeting us"],
+        "exploit attempt": ["someone trying to hack", "attack on the server"],
+    },
+}

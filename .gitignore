@@ -1,0 +1,7 @@
+﻿.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+security/data/.fernet_key
+security/data/.test_key
+security/data/certs/

@@ -1,0 +1,396 @@
+{
+  "_meta": {
+    "version": 1,
+    "built_at": "2026-05-29T14:24:43.088783+00:00",
+    "categories": [
+      "Access Management",
+      "Application",
+      "Database",
+      "Infrastructure",
+      "Network",
+      "Security",
+      "Storage"
+    ],
+    "n_synonyms": 48
+  },
+  "categories": {
+    "Access Management": {
+      "frequent": [
+        [
+          "okta",
+          0.2096
+        ],
+        [
+          "role",
+          0.1976
+        ],
+        [
+          "assignment",
+          0.1976
+        ],
+        [
+          "role assignment",
+          0.1976
+        ],
+        [
+          "group",
+          0.1976
+        ]
+      ],
+      "unique": [
+        "okta",
+        "role assignment",
+        "group"
+      ],
+      "synonyms": {
+        "role assignment": [
+          "wrong role",
+          "need elevated access"
+        ],
+        "okta": [
+          "okta login failing",
+          "can't get into okta apps"
+        ]
+      },
+      "normalized": {
+        "wrong role": "role assignment",
+        "need elevated access": "role assignment",
+        "okta login failing": "okta",
+        "can't get into okta apps": "okta"
+      }
+    },
+    "Application": {
+      "frequent": [
+        [
+          "exception",
+          0.2371
+        ],
+        [
+          "backend",
+          0.1925
+        ],
+        [
+          "api",
+          0.1901
+        ],
+        [
+          "endpoint",
+          0.1901
+        ],
+        [
+          "api endpoint",
+          0.1901
+        ]
+      ],
+      "unique": [
+        "backend",
+        "exception",
+        "microservice",
+        "rest",
+        "api"
+      ],
+      "synonyms": {
+        "api endpoint": [
+          "the service isn't responding",
+          "integration broken"
+        ],
+        "backend": [
+          "server side error",
+          "data not saving"
+        ],
+        "microservice": [
+          "one part of the app is down",
+          "a service isn't working"
+        ]
+      },
+      "normalized": {
+        "the service isn't responding": "api endpoint",
+        "integration broken": "api endpoint",
+        "server side error": "backend",
+        "data not saving": "backend",
+        "one part of the app is down": "microservice",
+        "a service isn't working": "microservice"
+      }
+    },
+    "Database": {
+      "frequent": [
+        [
+          "query",
+          0.2762
+        ],
+        [
+          "vacuum",
+          0.1904
+        ],
+        [
+          "stored",
+          0.1778
+        ],
+        [
+          "procedure",
+          0.1778
+        ],
+        [
+          "stored procedure",
+          0.1778
+        ]
+      ],
+      "unique": [
+        "query",
+        "vacuum",
+        "deadlock",
+        "stored procedure"
+      ],
+      "synonyms": {
+        "vacuum": [
+          "database bloated",
+          "cleanup needed"
+        ],
+        "deadlock": [
+          "transactions stuck",
+          "two things locked up"
+        ],
+        "stored procedure": [
+          "the saved routine failing",
+          "db function error"
+        ]
+      },
+      "normalized": {
+        "database bloated": "vacuum",
+        "cleanup needed": "vacuum",
+        "transactions stuck": "deadlock",
+        "two things locked up": "deadlock",
+        "the saved routine failing": "stored procedure",
+        "db function error": "stored procedure"
+      }
+    },
+    "Infrastructure": {
+      "frequent": [
+        [
+          "node",
+          0.2392
+        ],
+        [
+          "oom",
+          0.1961
+        ],
+        [
+          "killer",
+          0.1961
+        ],
+        [
+          "oom killer",
+          0.1961
+        ],
+        [
+          "cgroup",
+          0.1724
+        ]
+      ],
+      "unique": [
+        "node",
+        "cgroup",
+        "oom killer"
+      ],
+      "synonyms": {
+        "oom killer": [
+          "process got killed",
+          "app shut down on its own"
+        ],
+        "cgroup": [
+          "resource limits hit",
+          "container throttled"
+        ]
+      },
+      "normalized": {
+        "process got killed": "oom killer",
+        "app shut down on its own": "oom killer",
+        "resource limits hit": "cgroup",
+        "container throttled": "cgroup"
+      }
+    },
+    "Network": {
+      "frequent": [
+        [
+          "subnet",
+          0.2155
+        ],
+        [
+          "recurring",
+          0.2069
+        ],
+        [
+          "unresponsive",
+          0.1954
+        ],
+        [
+          "flapping",
+          0.1954
+        ],
+        [
+          "degraded",
+          0.1868
+        ]
+      ],
+      "unique": [
+        "subnet",
+        "bandwidth",
+        "mtu",
+        "latency",
+        "gateway"
+      ],
+      "synonyms": {
+        "subnet": [
+          "on the wrong network",
+          "can't see other computers"
+        ],
+        "gateway": [
+          "no internet at all",
+          "everything offline"
+        ],
+        "mtu": [
+          "large files won't send",
+          "hangs on big transfers"
+        ],
+        "bandwidth": [
+          "internet is slow",
+          "downloads crawling",
+          "everything sluggish online"
+        ],
+        "latency": [
+          "slow response",
+          "high ping",
+          "everything lags"
+        ]
+      },
+      "normalized": {
+        "on the wrong network": "subnet",
+        "can't see other computers": "subnet",
+        "no internet at all": "gateway",
+        "everything offline": "gateway",
+        "large files won't send": "mtu",
+        "hangs on big transfers": "mtu",
+        "internet is slow": "bandwidth",
+        "downloads crawling": "bandwidth",
+        "everything sluggish online": "bandwidth",
+        "slow response": "latency",
+        "high ping": "latency",
+        "everything lags": "latency"
+      }
+    },
+    "Security": {
+      "frequent": [
+        [
+          "threat",
+          0.2035
+        ],
+        [
+          "actor",
+          0.2035
+        ],
+        [
+          "threat actor",
+          0.2035
+        ],
+        [
+          "exploit",
+          0.1947
+        ],
+        [
+          "attempt",
+          0.1947
+        ]
+      ],
+      "unique": [
+        "phishing",
+        "threat actor",
+        "vulnerability"
+      ],
+      "synonyms": {
+        "vulnerability": [
+          "security hole",
+          "needs patching",
+          "found a weakness"
+        ],
+        "phishing": [
+          "suspicious email",
+          "got a scam email",
+          "fake login link"
+        ],
+        "threat actor": [
+          "an attacker",
+          "bad actor targeting us"
+        ]
+      },
+      "normalized": {
+        "security hole": "vulnerability",
+        "needs patching": "vulnerability",
+        "found a weakness": "vulnerability",
+        "suspicious email": "phishing",
+        "got a scam email": "phishing",
+        "fake login link": "phishing",
+        "an attacker": "threat actor",
+        "bad actor targeting us": "threat actor"
+      }
+    },
+    "Storage": {
+      "frequent": [
+        [
+          "mount",
+          0.2749
+        ],
+        [
+          "inode",
+          0.1873
+        ],
+        [
+          "san",
+          0.1825
+        ],
+        [
+          "raid",
+          0.1776
+        ],
+        [
+          "array",
+          0.1776
+        ]
+      ],
+      "unique": [
+        "mount",
+        "inode",
+        "san",
+        "lun",
+        "filesystem"
+      ],
+      "synonyms": {
+        "inode": [
+          "too many files",
+          "can't create files even with space"
+        ],
+        "lun": [
+          "storage unit not visible",
+          "disk unit missing"
+        ],
+        "filesystem": [
+          "drive corrupted",
+          "files unreadable"
+        ],
+        "san": [
+          "storage array issue",
+          "big storage down"
+        ]
+      },
+      "normalized": {
+        "too many files": "inode",
+        "can't create files even with space": "inode",
+        "storage unit not visible": "lun",
+        "disk unit missing": "lun",
+        "drive corrupted": "filesystem",
+        "files unreadable": "filesystem",
+        "storage array issue": "san",
+        "big storage down": "san"
+      }
+    }
+  }
+}

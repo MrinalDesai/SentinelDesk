@@ -1,0 +1,11 @@
+rank,Access Management,Application,Database,Infrastructure,Network,Security,Storage
+1,saml (0.076),application (0.127),database (0.154),node (0.096),network (0.105),unauthorized (0.087),storage (0.110)
+2,directory (0.074),application domain (0.070),replication (0.075),memory (0.088),dns (0.068),unauthorized access (0.080),nas (0.092)
+3,ldap (0.068),api (0.069),lag (0.071),exhaustion (0.080),dns resolution (0.057),access (0.068),mount (0.086)
+4,user (0.064),pipeline (0.065),connection (0.067),memory exhaustion (0.067),subnet (0.057),ransomware (0.061),volume (0.081)
+5,active (0.064),domain (0.061),pool (0.062),kubernetes (0.067),connectivity (0.056),credential (0.058),nas mount (0.059)
+6,assertion (0.064),endpoint (0.061),migration (0.056),hypervisor (0.064),resolution (0.056),theft (0.055),capacity (0.059)
+7,sync (0.063),build (0.059),replication lag (0.056),pod (0.062),latency (0.051),incident (0.055),array (0.059)
+8,active directory (0.060),microservice (0.053),connection pool (0.054),infrastructure (0.048),loss (0.050),malware (0.052),disk (0.055)
+9,provisioning (0.056),build pipeline (0.049),schema (0.053),taint (0.043),wifi (0.048),security (0.052),raid (0.051)
+10,saml assertion (0.049),exception (0.045),deadlock (0.043),pods (0.037),packet (0.043),credential theft (0.050),volume capacity (0.044)
