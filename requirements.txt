@@ -24,3 +24,5 @@ rank-bm25>=0.2
 pytest>=8
 langgraph>=0.2
 cryptography>=42
+fastapi>=0.110
+uvicorn>=0.29
