@@ -10,3 +10,4 @@ optimizer/__pycache__/
 semantic/__pycache__/
 hybrid/__pycache__/
 hybrid/emb_cache.json
+hybrid/emb_cache_small.json

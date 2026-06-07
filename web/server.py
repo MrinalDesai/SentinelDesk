@@ -28,6 +28,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT / "optimizer"))
+sys.path.insert(0, str(ROOT / "semantic"))
+sys.path.insert(0, str(ROOT / "hybrid"))
 
 from fastapi import FastAPI                                   # noqa: E402
 from fastapi.middleware.cors import CORSMiddleware           # noqa: E402
@@ -216,6 +218,213 @@ def learn_live(t: LearnIn):
     if t.capture:
         return JSONResponse(ll.capture(ctx, title, desc, do_prompt=t.prompt_search))
     return JSONResponse(ll.run_live(title, desc, ctx, do_prompt=t.prompt_search))
+
+
+class HybridIn(BaseModel):
+    text: str = ""
+    fast: bool = True
+
+
+def _get_hybrid(fast: bool):
+    """Lazy-build the hybrid retriever once (keeps server boot fast)."""
+    key = "hybrid_fast" if fast else "hybrid_full"
+    if STATE.get(key) is not None:
+        return STATE[key]
+    import hybrid_retrieval as hr
+    from semantic_fallback import LocalEmbedder, HashEmbedder
+    real = ROOT / "data" / "real_3000.csv"
+    from sentineldesk.corpus import load_tickets_csv
+    tickets = load_tickets_csv(real) if real.exists() else []
+    model = "BAAI/bge-small-en-v1.5" if fast else "BAAI/bge-m3"
+    try:
+        emb = LocalEmbedder(model)
+    except Exception:
+        emb = HashEmbedder()
+    cache = str(ROOT / "hybrid" / ("emb_cache_small.json" if fast else "emb_cache.json"))
+    bm25 = hr.BM25Retriever(tickets)
+    sem = hr.QdrantSemanticRetriever(tickets, emb, cache_path=cache)
+    graph = hr.GraphRetriever(tickets, STATE["cv"])
+    hyb = hr.HybridRetriever([bm25, sem, graph])
+    STATE[key] = {"hyb": hyb, "embedder": emb.name}
+    return STATE[key]
+
+
+@app.post("/api/hybrid")
+def api_hybrid(t: HybridIn):
+    """Run a ticket through BM25 + semantic(Qdrant/BGE) + Graph RAG, show fusion."""
+    if not (ROOT / "data" / "real_3000.csv").exists():
+        return JSONResponse({"error": "data/real_3000.csv not found"}, status_code=400)
+    h = _get_hybrid(t.fast)
+    out = h["hyb"].route(t.text)
+    return JSONResponse({
+        "embedder": h["embedder"],
+        "category": out.get("category"),
+        "confidence": out.get("confidence"),
+        "ranking": [[c, round(s, 4)] for c, s in out.get("ranking", [])],
+        "per_ranker": {name: [{"category": i.category, "text": i.text[:80], "score": round(i.score, 3)}
+                              for i in items]
+                       for name, items in out.get("per_ranker", {}).items()},
+    })
+
+
+class ExplainIn(BaseModel):
+    text: str = ""
+
+
+@app.post("/api/explain")
+def api_explain(t: ExplainIn):
+    """Step-by-step classification reasoning for the glow animation:
+    which frequent / unique(TF-IDF,n-gram) terms fired, the scorer decision,
+    and — only if it's a tie — the assembled LLM tiebreak prompt."""
+    cv, scorer = STATE["cv"], STATE["scorer"]
+    text = t.text.strip()
+    normalized = cv.normalize(text)
+    # classify on the ORIGINAL text so matched terms line up with what the user sees
+    sr = scorer.classify("", text)
+    matched = sr.matched
+    # if nothing matched on the original (because it needed normalization), re-score
+    # on the normalized text and flag that normalization was load-bearing
+    norm_helped = False
+    if not any(matched.get(s) for s in ("unique", "freq", "layman", "dept")) and normalized.lower() != text.lower():
+        sr = scorer.classify("", normalized)
+        matched = sr.matched
+        norm_helped = True
+    # per-domain scores for the bars
+    scores = dict(sorted(sr.scores.items(), key=lambda x: x[1], reverse=True))
+    resp = {
+        "text": text,
+        "normalized": normalized,
+        "norm_helped": norm_helped,
+        "glow_text": normalized if norm_helped else text,
+        "freq_terms": matched.get("freq", []),
+        "unique_terms": matched.get("unique", []),
+        "layman_terms": matched.get("layman", []),
+        "dept_terms": matched.get("dept", []),
+        "category": sr.category,
+        "confidence": round(sr.confidence, 3),
+        "is_edge_case": sr.is_edge_case,
+        "edge_reason": getattr(sr, "edge_reason", ""),
+        "runner_up": getattr(sr, "runner_up", ""),
+        "margin": getattr(sr, "margin", None),
+        "scores": {k: round(float(v), 2) for k, v in scores.items()},
+        "path": "confident_scorer" if not sr.is_edge_case else "tie_break",
+    }
+    # only assemble/run the LLM prompt when it's actually a tie
+    if sr.is_edge_case:
+        candidates = sorted({sr.category, getattr(sr, "runner_up", "") or sr.category})
+        evidence = ", ".join(f"{sig}={terms}" for sig, terms in matched.items() if terms) or "none"
+        prompt = (
+            "You are routing an IT support ticket to exactly one team. "
+            f"The candidate teams are: {', '.join(candidates)}.\n"
+            f"Ticket: {text}\n"
+            f"Lexical evidence found: {evidence}\n"
+            "Reply with ONLY the exact team name from the candidate list that best "
+            "matches the ROOT cause (not an incidental mention)."
+        )
+        choice = None
+        if STATE.get("llm_kind") == "ollama" and STATE.get("llm") is not None:
+            try:
+                choice = STATE["llm"].complete(prompt, temperature=0.0).strip()
+            except Exception:
+                choice = None
+        resp["tiebreak"] = {"candidates": candidates, "prompt": prompt, "llm_choice": choice}
+    return JSONResponse(resp)
+
+
+@app.post("/api/synonym_compare")
+def api_synonym_compare(t: ExplainIn):
+    """Classify the ticket WITHOUT and WITH synonym normalization, and show which
+    casual words mapped to which canonical (TF-IDF/n-gram) terms."""
+    cv, scorer = STATE["cv"], STATE["scorer"]
+    text = t.text.strip()
+    normalized = cv.normalize(text)
+
+    raw = scorer.classify("", text)
+    norm = scorer.classify("", normalized)
+
+    # which synonyms in the text mapped to a canonical term, and is that term in the vocab?
+    syn2canon = getattr(cv, "syn2canon", {})
+    vocab_terms = set()
+    for c in scorer.v.categories:
+        vocab_terms |= set(scorer.v.unique_terms.get(c, set())) | set(scorer.v.freq_terms.get(c, set()))
+    mappings = []
+    low = text.lower()
+    for syn, canon in syn2canon.items():
+        if syn in low and syn != canon:
+            mappings.append({"synonym": syn, "canonical": canon,
+                             "in_vocab": canon in vocab_terms})
+    # dedupe + cap
+    seen = set(); uniq = []
+    for m in mappings:
+        if m["synonym"] in seen:
+            continue
+        seen.add(m["synonym"]); uniq.append(m)
+
+    def ev(sr):
+        return ", ".join(f"{k}={v}" for k, v in sr.matched.items() if v) or "none"
+
+    # build the tiebreak prompt as it WOULD be assembled from the normalized evidence,
+    # so we can show the synonym-derived terms populating it (honest: this is the
+    # tiebreak prompt used on ambiguous tickets; confident tickets are decided by the scorer)
+    top2 = [k for k, _ in sorted(norm.scores.items(), key=lambda x: x[1], reverse=True)[:2]]
+    norm_evidence = ev(norm)
+    prompt = (
+        "You are routing an IT support ticket to exactly one team. "
+        f"The candidate teams are: {', '.join(top2)}.\n"
+        f"Ticket: {normalized}\n"
+        f"Lexical evidence found: {norm_evidence}\n"
+        "Reply with ONLY the exact team name from the candidate list that best "
+        "matches the ROOT cause (not an incidental mention)."
+    )
+
+    return JSONResponse({
+        "text": text,
+        "normalized": normalized,
+        "changed": normalized.lower() != low,
+        "without": {"category": raw.category, "confidence": round(raw.confidence, 3),
+                    "edge": raw.is_edge_case, "evidence": ev(raw),
+                    "unique": raw.matched.get("unique", []), "freq": raw.matched.get("freq", [])},
+        "with": {"category": norm.category, "confidence": round(norm.confidence, 3),
+                 "edge": norm.is_edge_case, "evidence": ev(norm),
+                 "unique": norm.matched.get("unique", []), "freq": norm.matched.get("freq", [])},
+        "mappings": uniq[:12],
+        "flipped": raw.category != norm.category,
+        "prompt": prompt,
+        "prompt_evidence": norm_evidence,
+        "with_confident": not norm.is_edge_case,
+    })
+
+
+@app.get("/api/vocab")
+def api_vocab():
+    """All TF-IDF (unique) and n-gram/frequent terms per domain, for the vocab browser."""
+    v = STATE["scorer"].v
+    out = {}
+    for c in v.categories:
+        uniq = sorted(v.unique_terms.get(c, set()))
+        freq = sorted(v.freq_terms.get(c, set()))
+        ngrams = sorted([term for term in uniq if " " in term])
+        out[c] = {"unique": uniq, "frequent": freq, "ngrams": ngrams,
+                  "counts": {"unique": len(uniq), "frequent": len(freq), "ngrams": len(ngrams)}}
+    return JSONResponse(out)
+
+
+@app.get("/vocab", response_class=HTMLResponse)
+def vocab_page():
+    html = (ROOT / "web" / "vocab.html")
+    return html.read_text(encoding="utf-8") if html.exists() else "<h1>vocab.html missing</h1>"
+
+
+@app.get("/explain", response_class=HTMLResponse)
+def explain_page():
+    html = (ROOT / "web" / "explain.html")
+    return html.read_text(encoding="utf-8") if html.exists() else "<h1>explain.html missing</h1>"
+
+
+@app.get("/hybrid", response_class=HTMLResponse)
+def hybrid_page():
+    html = (ROOT / "web" / "hybrid.html")
+    return html.read_text(encoding="utf-8") if html.exists() else "<h1>hybrid.html missing</h1>"
 
 
 @app.get("/learn", response_class=HTMLResponse)
