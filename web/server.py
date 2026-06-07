@@ -27,6 +27,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
+sys.path.insert(0, str(ROOT / "optimizer"))
 
 from fastapi import FastAPI                                   # noqa: E402
 from fastapi.middleware.cors import CORSMiddleware           # noqa: E402
@@ -88,6 +89,14 @@ def _boot():
                                "truth": r.get("category", "")})
     STATE.update(cv=cv, svm=svm, scorer=scorer, knn=knn, resolver=resolver,
                  graph=graph, pipe=pipe, sample=sample)
+    # learning-loop context (held-out split + llm kind), isolated bonus feature
+    try:
+        import optimize as _opt
+        llm_kind = "ollama" if llm.__class__.__name__ == "OllamaClient" else "stub"
+        split = _opt.three_way_split(graph_src) if len(graph_src) > 50 else None
+        STATE.update(split=split, llm=llm, llm_kind=llm_kind)
+    except Exception as e:
+        STATE.update(split=None, llm=None, llm_kind="stub", learn_error=str(e))
 
 
 @app.on_event("startup")
@@ -178,6 +187,41 @@ def experiment(name: str):
                              "returncode": proc.returncode})
     except subprocess.TimeoutExpired:
         return JSONResponse({"name": name, "error": "timed out (>10 min)"}, status_code=504)
+
+
+@app.get("/api/learn/cached")
+def learn_cached():
+    """Replay a previously captured real run (instant, no compute)."""
+    import live_learning as ll
+    return JSONResponse(ll.load_cached())
+
+
+class LearnIn(BaseModel):
+    title: str = ""
+    description: str = ""
+    prompt_search: bool = False
+    capture: bool = False
+
+
+@app.post("/api/learn/live")
+def learn_live(t: LearnIn):
+    """Run the real learning loop and return ordered step events."""
+    import live_learning as ll
+    if STATE.get("split") is None:
+        return JSONResponse({"mode": "live", "steps": [ll.step("error", "Not enough data",
+            "Need a corpus (data/real_3000.csv) with >50 tickets to split train/val/test.", {})]})
+    ctx = STATE
+    title = t.title or "websites won't load"
+    desc = t.description or "users across the office cannot reach internal sites"
+    if t.capture:
+        return JSONResponse(ll.capture(ctx, title, desc, do_prompt=t.prompt_search))
+    return JSONResponse(ll.run_live(title, desc, ctx, do_prompt=t.prompt_search))
+
+
+@app.get("/learn", response_class=HTMLResponse)
+def learn_page():
+    html = (ROOT / "web" / "learn.html")
+    return html.read_text(encoding="utf-8") if html.exists() else "<h1>learn.html missing</h1>"
 
 
 @app.get("/", response_class=HTMLResponse)

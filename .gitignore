@@ -5,3 +5,8 @@ __pycache__/
 security/data/.fernet_key
 security/data/.test_key
 security/data/certs/
+
+optimizer/__pycache__/
+semantic/__pycache__/
+hybrid/__pycache__/
+hybrid/emb_cache.json

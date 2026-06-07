@@ -1,0 +1,144 @@
+{
+  "mode": "cached",
+  "steps": [
+    {
+      "kind": "safety",
+      "title": "Safety gate",
+      "sentence": "No high-stakes pattern \u2014 proceed to classification.",
+      "detail": {
+        "matched": null,
+        "department": null,
+        "latency_ms": 0.053
+      },
+      "metric": null
+    },
+    {
+      "kind": "normalize",
+      "title": "Synonym normalization",
+      "sentence": "Text already canonical \u2014 layer dormant.",
+      "detail": {
+        "before": "the net is down and websites wont load users across the office cannot reach internal sites",
+        "after": "the net is down and websites wont load users across the office cannot reach internal sites",
+        "changed": false
+      },
+      "metric": null
+    },
+    {
+      "kind": "classify",
+      "title": "Classification",
+      "sentence": "Classified as Infrastructure at 67% confidence.",
+      "detail": {
+        "category": "Infrastructure",
+        "confidence": 0.667,
+        "edge_case": true
+      },
+      "metric": null
+    },
+    {
+      "kind": "explain",
+      "title": "Why \u2014 explainability",
+      "sentence": "Decision driven by Infrastructure-specific terms.",
+      "detail": {
+        "evidence": {
+          "unique": [
+            "load"
+          ]
+        }
+      },
+      "metric": null
+    },
+    {
+      "kind": "verdict",
+      "title": "Reasoning chain",
+      "sentence": "Full grounded trace produced \u2014 every step traceable.",
+      "detail": {
+        "chain": [
+          "lexical signal: Uncertain \u2014 best guess is Infrastructure, but top two are too close (2 vs 1). The signal that did fire: it uses Infrastructure-specific terms 'load'. Sending to the edge-case resolver (root-cause check, history vote, then a human if still unclear).",
+          "routing: SVM: Infrastructure (confidence 0.50)",
+          "routing: confidence < 0.80 -> entering edge-case ladder",
+          "routing: voters -> scorer: Infrastructure (margin 1.0), kNN: Infrastructure (1.00), SVM: Infrastructure",
+          "routing: 3/3 voters agree -> Infrastructure",
+          "voters -> svm=Infrastructure, scorer=Infrastructure, knn=Infrastructure",
+          "resolution: no matching cause in the graph -> hand off"
+        ]
+      },
+      "metric": null
+    },
+    {
+      "kind": "split",
+      "title": "Held-out split",
+      "sentence": "Data split train/validation/test \u2014 the loop never sees test.",
+      "detail": {
+        "train": 2093,
+        "val": 448,
+        "test": 455
+      },
+      "metric": null
+    },
+    {
+      "kind": "baseline",
+      "title": "Baseline (held-out)",
+      "sentence": "Starting validation accuracy: 98.7%.",
+      "detail": {
+        "val": 0.9866
+      },
+      "metric": {
+        "val": 98.7
+      }
+    },
+    {
+      "kind": "mine",
+      "title": "Mining candidates",
+      "sentence": "Mined 2 candidate keywords/n-grams from misclassified tickets.",
+      "detail": {
+        "candidates": [
+          [
+            "Infrastructure",
+            "minutes"
+          ],
+          [
+            "Security",
+            "intrusions"
+          ]
+        ]
+      },
+      "metric": null
+    },
+    {
+      "kind": "reject",
+      "title": "Keyword rejected",
+      "sentence": "\u201cminutes\u201d didn\u2019t help held-out accuracy \u2014 reverted.",
+      "detail": {
+        "term": "minutes",
+        "category": "Infrastructure"
+      },
+      "metric": null
+    },
+    {
+      "kind": "reject",
+      "title": "Keyword rejected",
+      "sentence": "\u201cintrusions\u201d didn\u2019t help held-out accuracy \u2014 reverted.",
+      "detail": {
+        "term": "intrusions",
+        "category": "Security"
+      },
+      "metric": null
+    },
+    {
+      "kind": "sealed",
+      "title": "Sealed test set (opened once)",
+      "sentence": "Test accuracy 98.0% \u2192 98.0% (val\u2192test gap +0.6%).",
+      "detail": {
+        "base_test": 0.9802,
+        "opt_test": 0.9802,
+        "val": 0.9866,
+        "gap": 0.0064,
+        "honest": "small gap = generalizes"
+      },
+      "metric": {
+        "test": 98.0
+      }
+    }
+  ],
+  "captured_at": "2026-06-07 12:55"
+}
