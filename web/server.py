@@ -137,7 +137,54 @@ def run_ticket(t: TicketIn):
     gr = graph.query(text)
     final = pipe.run(title, desc)
 
+    # --- append a REAL audit entry to disk (timestamp, agent decisions, confidence) ---
+    import datetime, json as _json
+    audit_dir = ROOT / "logs"; audit_dir.mkdir(exist_ok=True)
+    entry = {
+        "ts": datetime.datetime.now().isoformat(timespec="seconds"),
+        "ticket": (text[:120]),
+        "safety": "ESCALATED:" + (safe.department or "") if safe.bypass_llm else "pass",
+        "classifier": f"{sr.category} ({round(sr.confidence*100)}%)",
+        "router": f"{decision.category} [{decision.method}]",
+        "resolver": (gr.root_cause if gr and gr.root_cause else "escalate"),
+        "outcome": final.outcome,
+        "final": final.category,
+        "confidence": round(final.confidence, 3),
+    }
+    try:
+        with open(audit_dir / "audit.jsonl", "a", encoding="utf-8") as fh:
+            fh.write(_json.dumps(entry) + "\n")
+    except Exception:
+        pass
+
+    # derive the agent flow: which of the 5 agents fired, each one's status + one-line result.
+    # honest: reflects the REAL path the ticket took (safety bypass, confident route, ladder, escalation).
+    method = decision.method
+    flow = []
+    flow.append({"agent": "Safety", "status": "fired",
+                 "result": (f"Escalated → {safe.department}" if safe.bypass_llm else "No high-stakes match — proceed"),
+                 "terminal": bool(safe.bypass_llm)})
+    if safe.bypass_llm:
+        for nm in ("Classify", "Route", "Resolve", "Judge"):
+            flow.append({"agent": nm, "status": "skipped", "result": "bypassed (safety escalation)", "terminal": False})
+        flow[-1] = {"agent": "Judge", "status": "fired", "result": f"Routed to {safe.department} by rule", "terminal": True}
+    else:
+        flow.append({"agent": "Classify", "status": "fired",
+                     "result": f"{sr.category} @ {round(sr.confidence,2)}" + (" (edge case)" if sr.is_edge_case else ""),
+                     "terminal": False})
+        route_txt = {"confident_svm": f"Confident → {decision.category} (direct route)",
+                     "agreement": f"Voter ladder → {decision.category}",
+                     "llm_tiebreak": f"Tie → LLM picked {decision.category}",
+                     "escalated": "Escalated to human"}.get(method, decision.category)
+        flow.append({"agent": "Route", "status": "fired", "result": route_txt, "terminal": method == "escalated"})
+        flow.append({"agent": "Resolve", "status": ("fired" if not decision.escalated else "skipped"),
+                     "result": (f"Graph RAG → {gr.root_cause}" if gr and gr.root_cause else "no vetted fix → escalate"),
+                     "terminal": False})
+        flow.append({"agent": "Judge", "status": "fired",
+                     "result": f"{final.outcome} → {final.category}", "terminal": True})
+
     return JSONResponse({
+        "agent_flow": flow,
         "safety": {"escalated": safe.bypass_llm, "matched": safe.matched_category,
                    "department": safe.department, "latency_ms": round(safe.latency_ms, 3)},
         "normalization": {"before": text, "after": normalized, "changed": normalized != text.lower()},
@@ -393,6 +440,85 @@ def api_synonym_compare(t: ExplainIn):
         "prompt_evidence": norm_evidence,
         "with_confident": not norm.is_edge_case,
     })
+
+
+class CorrectIn(BaseModel):
+    text: str = ""
+    correct_category: str = ""
+
+
+@app.post("/api/self_correct")
+def api_self_correct(t: CorrectIn):
+    """Demonstrate the real self-correction loop: classify BEFORE, learn the human
+    correction (a new synonym -> the correct category's anchor term), classify AFTER.
+    Shows exactly what changed (the new synonym), no retraining."""
+    from sentineldesk.learning.self_correction import CorrectionStore
+    cv, scorer = STATE["cv"], STATE["scorer"]
+    text = t.text.strip()
+
+    # BEFORE — current normalization + classification
+    before_norm = cv.normalize(text)
+    before = scorer.classify("", before_norm)
+
+    # the phrase the dictionary missed = the part that carried no signal.
+    # for the demo we take the user's whole casual text as the candidate phrase.
+    store = STATE.get("correction_store")
+    if store is None:
+        store = CorrectionStore.from_vocab(cv)
+        STATE["correction_store"] = store
+
+    correct_cat = t.correct_category or before.runner_up or before.category
+    # learn it (min_support=1 so the demo commits immediately)
+    res = store.record(text, correct_cat, min_support=1)
+
+    # AFTER — normalization WITH the learned overlay, then classify
+    after_norm = store.normalize(text, cv)
+    after = scorer.classify("", after_norm)
+
+    return JSONResponse({
+        "text": text,
+        "before": {"normalized": before_norm, "category": before.category,
+                   "confidence": round(before.confidence, 3), "edge": before.is_edge_case,
+                   "evidence": ", ".join(f"{k}={v}" for k, v in before.matched.items() if v) or "none"},
+        "correction": {"status": res.status, "phrase": res.phrase, "category": res.category,
+                       "anchor": res.anchor, "detail": res.detail},
+        "after": {"normalized": after_norm, "category": after.category,
+                  "confidence": round(after.confidence, 3), "edge": after.is_edge_case,
+                  "evidence": ", ".join(f"{k}={v}" for k, v in after.matched.items() if v) or "none"},
+        "fixed": before.category != after.category,
+        "audit": store.audit[-8:],
+    })
+
+
+@app.get("/correct", response_class=HTMLResponse)
+def correct_page():
+    html = (ROOT / "web" / "correct.html")
+    return html.read_text(encoding="utf-8") if html.exists() else "<h1>correct.html missing</h1>"
+
+
+@app.get("/api/audit")
+def api_audit(limit: int = 200):
+    """Read the real audit log (most recent first)."""
+    import json as _json
+    path = ROOT / "logs" / "audit.jsonl"
+    rows = []
+    if path.exists():
+        for line in path.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                rows.append(_json.loads(line))
+            except Exception:
+                pass
+    rows.reverse()
+    return JSONResponse({"count": len(rows), "rows": rows[:limit]})
+
+
+@app.get("/audit", response_class=HTMLResponse)
+def audit_page():
+    html = (ROOT / "web" / "audit.html")
+    return html.read_text(encoding="utf-8") if html.exists() else "<h1>audit.html missing</h1>"
 
 
 @app.get("/api/vocab")
