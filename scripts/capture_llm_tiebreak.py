@@ -25,6 +25,7 @@ CACHE = ROOT / "data" / "llm_tiebreak_cache.json"
 
 # the demo 3-way-split tickets (extend this list as you add demo cases)
 TICKETS = [
+    "The application domain is experiencing sudden and complete failure with endpoints degraded and payloads failing to execute.",
     "User accounts are not syncing properly with the centralized authentication server, resulting in intermittent access to applications.",
     "Users are experiencing intermittent issues with accessing resources on the site. Delayed and degraded performance affects everyone.",
 ]
@@ -62,6 +63,8 @@ def main():
         except Exception:
             cache = {}
 
+    pipe = STATE["pipe"]
+    graph = STATE["graph"]
     for tk in TICKETS:
         d = resolver.resolve("", tk)
         if d.method != "llm_tiebreak":
@@ -91,7 +94,12 @@ def main():
             "model": "mistral:7b-instruct-q8_0",
             "captured_at": datetime.datetime.now().isoformat(timespec="seconds"),
         }
-        print(f"[captured] {d.category}  <-  {tk[:55]}  (raw: {raw[:40]!r})")
+        gr = graph.query(tk)
+        rescat = getattr(gr, "category", None)
+        final = pipe.run("", tk)
+        flag = "AUTO-RESOLVE" if final.outcome == "auto_resolved" else "escalate"
+        print(f"[captured] LLM->{d.category:18s} graph->{str(rescat):14s} => {flag:12s}  | {tk[:48]}")
+        print(f"           raw: {raw!r}")
 
     CACHE.write_text(json.dumps(cache, indent=2), encoding="utf-8")
     print(f"\nWrote {CACHE} with {len(cache)} entries (source=ollama).")
