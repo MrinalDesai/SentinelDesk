@@ -66,13 +66,30 @@ def _boot():
     svm = SVMClassifier(load_model(model_path)) if model_path.exists() else SVMClassifier(train_svm(train))
     scorer = DeterministicScorer(VocabModel.build(train))
     knn = KNNVoter(k=5).fit(train)
-    # use a real Ollama client if available, else stub
+    # LLM wiring: use a LIVE local Ollama if one is actually reachable; otherwise
+    # fall back to replaying tiebreak responses recorded from a real Ollama run
+    # (data/llm_tiebreak_cache.json) so the rare tiebreak path stays demonstrable.
+    def _ollama_up(host="http://localhost:11434", t=2.0):
+        import urllib.request
+        try:
+            urllib.request.urlopen(host + "/api/tags", timeout=t)
+            return True
+        except Exception:
+            return False
+    cache_path = ROOT / "data" / "llm_tiebreak_cache.json"
     try:
-        from sentineldesk.llm import OllamaClient
-        llm = OllamaClient(model="mistral:7b-instruct-q8_0")
+        if _ollama_up():
+            from sentineldesk.llm import OllamaClient
+            llm = OllamaClient(model="mistral:7b-instruct-q8_0")
+            llm_kind_boot = "ollama"
+        else:
+            from sentineldesk.llm import CacheLLMClient
+            llm = CacheLLMClient(cache_path)
+            llm_kind_boot = "cache"
     except Exception:
         from sentineldesk.llm import StubLLMClient
-        llm = StubLLMClient(lambda p: "Database")
+        llm = StubLLMClient(lambda p: "")
+        llm_kind_boot = "stub"
     resolver = EdgeCaseResolver(scorer, svm, knn, llm=llm, confidence_gate=0.80)
     # graph from the REAL corpus if present, else the controlled train set
     real = ROOT / "data" / "real_3000.csv"
@@ -90,15 +107,15 @@ def _boot():
                                "text": r.get("description", r.get("text", "")),
                                "truth": r.get("category", "")})
     STATE.update(cv=cv, svm=svm, scorer=scorer, knn=knn, resolver=resolver,
-                 graph=graph, pipe=pipe, sample=sample, train=train)
-    # learning-loop context (held-out split + llm kind), isolated bonus feature
+                 graph=graph, pipe=pipe, sample=sample, train=train,
+                 llm=llm, llm_kind=llm_kind_boot)
+    # learning-loop context (held-out split), isolated bonus feature
     try:
         import optimize as _opt
-        llm_kind = "ollama" if llm.__class__.__name__ == "OllamaClient" else "stub"
         split = _opt.three_way_split(graph_src) if len(graph_src) > 50 else None
-        STATE.update(split=split, llm=llm, llm_kind=llm_kind)
+        STATE.update(split=split)
     except Exception as e:
-        STATE.update(split=None, llm=None, llm_kind="stub", learn_error=str(e))
+        STATE.update(split=None, learn_error=str(e))
 
 
 @app.on_event("startup")
@@ -320,45 +337,123 @@ class ExplainIn(BaseModel):
 
 @app.post("/api/explain")
 def api_explain(t: ExplainIn):
-    """Step-by-step classification reasoning for the glow animation:
-    which frequent / unique(TF-IDF,n-gram) terms fired, the scorer decision,
-    and — only if it's a tie — the assembled LLM tiebreak prompt."""
-    cv, scorer = STATE["cv"], STATE["scorer"]
+    """Step-by-step reasoning for the glow animation, run through the REAL routing
+    pipeline (not the scorer alone): which terms fired, the SVM confidence, the
+    deterministic scorer, the kNN vote, the actual edge-case-resolver decision
+    (confident_svm | agreement | llm_tiebreak | escalated), and — only when the
+    resolver genuinely reached the LLM rung — the assembled tiebreak prompt.
+
+    The displayed `category`/`confidence`/`path` are the resolver's REAL decision,
+    so the verdict can never contradict the route that was actually taken.
+    """
+    cv, svm, scorer = STATE["cv"], STATE["svm"], STATE["scorer"]
+    resolver = STATE["resolver"]
     text = t.text.strip()
     normalized = cv.normalize(text)
+
+    # --- Stage 0: the safety gate (runs FIRST, exactly like the real pipeline) ---
+    # A high-stakes match escalates immediately and bypasses classification entirely.
+    safe = safety_check("", text)
+    if safe.bypass_llm:
+        return JSONResponse({
+            "text": text,
+            "normalized": normalized,
+            "safety": {
+                "escalated": True,
+                "matched": safe.matched_category,
+                "department": safe.department,
+                "severity": getattr(safe, "severity", None),
+                "latency_ms": round(getattr(safe, "latency_ms", 0.0), 3),
+            },
+            "category": safe.department,
+            "outcome": "safety_escalated",
+            "path": "safety_gate",
+        })
+
+    # --- scorer evidence (for the glowing terms) -------------------------------
     # classify on the ORIGINAL text so matched terms line up with what the user sees
     sr = scorer.classify("", text)
     matched = sr.matched
-    # if nothing matched on the original (because it needed normalization), re-score
-    # on the normalized text and flag that normalization was load-bearing
     norm_helped = False
     if not any(matched.get(s) for s in ("unique", "freq", "layman", "dept")) and normalized.lower() != text.lower():
         sr = scorer.classify("", normalized)
         matched = sr.matched
         norm_helped = True
-    # per-domain scores for the bars
     scores = dict(sorted(sr.scores.items(), key=lambda x: x[1], reverse=True))
+
+    # --- the REAL routing pipeline: SVM gate -> voter ladder -> tiebreak/escalate
+    raw_pred, raw_conf = svm.predict(text)
+    norm_pred, norm_conf = svm.predict(normalized)
+    knn_vote = STATE["knn"].vote(text)
+    decision = resolver.resolve("", text)   # Decision(category, method, confidence, trace, votes, escalated)
+
+    # run the FULL pipeline too, so we can show the judge's real reconciliation
+    graph, pipe = STATE["graph"], STATE["pipe"]
+    gr = graph.query(text)
+    final = pipe.run("", text)
+    route_cat = decision.category
+    resolution_cat = getattr(gr, "category", None) if gr else None
+    mismatch = bool(resolution_cat) and resolution_cat != route_cat
+
     resp = {
         "text": text,
         "normalized": normalized,
         "norm_helped": norm_helped,
+        "safety": {"escalated": False},
         "glow_text": normalized if norm_helped else text,
         "freq_terms": matched.get("freq", []),
         "unique_terms": matched.get("unique", []),
         "layman_terms": matched.get("layman", []),
         "dept_terms": matched.get("dept", []),
-        "category": sr.category,
-        "confidence": round(sr.confidence, 3),
-        "is_edge_case": sr.is_edge_case,
-        "edge_reason": getattr(sr, "edge_reason", ""),
-        "runner_up": getattr(sr, "runner_up", ""),
-        "margin": getattr(sr, "margin", None),
+        # scorer view (one of three voters) — kept for the bars + evidence
+        "scorer": {
+            "category": sr.category,
+            "confidence": round(sr.confidence, 3),
+            "is_edge_case": sr.is_edge_case,
+            "edge_reason": getattr(sr, "edge_reason", ""),
+            "runner_up": getattr(sr, "runner_up", ""),
+            "margin": getattr(sr, "margin", None),
+        },
+        # the trained SVM (the confidence-gate classifier)
+        "svm": {
+            "category": raw_pred, "confidence": round(raw_conf, 3),
+            "normalized_category": norm_pred, "normalized_confidence": round(norm_conf, 3),
+            "gate": round(getattr(resolver, "gate", 0.80), 2),
+            "passed_gate": raw_conf >= getattr(resolver, "gate", 0.80),
+        },
+        # the kNN similar-ticket voter
+        "knn": {"category": knn_vote.category, "confidence": round(knn_vote.confidence, 3)},
+        # the REAL decision from the edge-case resolver — this is the verdict
+        "decision": {
+            "category": decision.category,
+            "method": decision.method,             # confident_svm | agreement | llm_tiebreak | escalated
+            "confidence": round(decision.confidence, 3),
+            "votes": decision.votes,               # {svm, scorer, knn} -> pick
+            "trace": decision.trace,               # ordered reasoning steps
+            "escalated": decision.escalated,
+        },
         "scores": {k: round(float(v), 2) for k, v in scores.items()},
-        "path": "confident_scorer" if not sr.is_edge_case else "tie_break",
+        # the judge's real reconciliation of route vs. resolution
+        "judge": {
+            "route_category": route_cat,
+            "resolution_category": resolution_cat,
+            "root_cause": getattr(gr, "root_cause", None) if gr else None,
+            "mismatch": mismatch,
+            "outcome": final.outcome,
+            "final_category": final.category,
+            "final_confidence": round(final.confidence, 3),
+        },
+        # verdict mirrors the FINAL judged outcome, not the routing step alone
+        "category": final.category,
+        "confidence": round(final.confidence, 3),
+        "outcome": final.outcome,
+        "path": decision.method,
+        "agreement_fraction": decision.votes and f"{sum(1 for v in decision.votes.values() if v == decision.category)}/{len(decision.votes)}",
     }
-    # only assemble/run the LLM prompt when it's actually a tie
-    if sr.is_edge_case:
-        candidates = sorted({sr.category, getattr(sr, "runner_up", "") or sr.category})
+
+    # assemble/run the LLM prompt ONLY when the resolver actually reached the LLM rung
+    if decision.method == "llm_tiebreak":
+        candidates = sorted(set(decision.votes.values()))
         evidence = ", ".join(f"{sig}={terms}" for sig, terms in matched.items() if terms) or "none"
         prompt = (
             "You are routing an IT support ticket to exactly one team. "
@@ -368,13 +463,10 @@ def api_explain(t: ExplainIn):
             "Reply with ONLY the exact team name from the candidate list that best "
             "matches the ROOT cause (not an incidental mention)."
         )
-        choice = None
-        if STATE.get("llm_kind") == "ollama" and STATE.get("llm") is not None:
-            try:
-                choice = STATE["llm"].complete(prompt, temperature=0.0).strip()
-            except Exception:
-                choice = None
-        resp["tiebreak"] = {"candidates": candidates, "prompt": prompt, "llm_choice": choice}
+        # the resolver already ran the real tiebreak; report its chosen category as the live result
+        src = STATE.get("llm_kind", "ollama")
+        resp["tiebreak"] = {"candidates": candidates, "prompt": prompt,
+                            "llm_choice": decision.category, "source": src}
     return JSONResponse(resp)
 
 

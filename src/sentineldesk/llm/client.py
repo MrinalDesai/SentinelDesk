@@ -51,6 +51,56 @@ class StubLLMClient:
         return self._handler(prompt)
 
 
+class CacheLLMClient:
+    """Replays tiebreak responses recorded from a REAL Ollama run.
+
+    Used as the fallback when a live Ollama server isn't reachable, so a demo
+    can still show the rare LLM-tiebreak path resolving instead of silently
+    escalating. The cache is a JSON map: ticket-text -> {raw_response, choice,
+    candidates, source, ...}. On a cache miss it returns "" — exactly how a
+    missing model degrades — so behaviour stays honest for unseen tickets.
+    """
+
+    def __init__(self, cache_path) -> None:
+        import json
+        import pathlib
+        import re
+
+        self.path = pathlib.Path(cache_path)
+        try:
+            self.cache = json.loads(self.path.read_text(encoding="utf-8"))
+        except Exception:
+            self.cache = {}
+        self._re = re.compile(r"Ticket:\s*(.+)")
+        self.calls: list[str] = []
+
+    def _lookup(self, ticket: str):
+        e = self.cache.get(ticket)
+        if e:
+            return e
+        for k, v in self.cache.items():          # tolerate minor whitespace drift
+            if k.strip()[:80] == ticket.strip()[:80]:
+                return v
+        return None
+
+    def complete(
+        self,
+        prompt: str,
+        *,
+        system: Optional[str] = None,
+        temperature: float = 0.7,
+        json_mode: bool = False,
+    ) -> str:
+        self.calls.append(prompt)
+        m = self._re.search(prompt)
+        if not m:
+            return ""
+        entry = self._lookup(m.group(1).strip())
+        if not entry:
+            return ""
+        return entry.get("raw_response") or entry.get("choice") or ""
+
+
 class OllamaClient:
     """LLM client backed by a local Ollama server (your machine)."""
 

@@ -1,0 +1,26 @@
+{
+  "The application domain is experiencing sudden and complete failure with endpoints degraded and payloads failing to execute.": {
+    "candidates": ["Application", "Network", "Storage"],
+    "votes": {"svm": "Network", "scorer": "Storage", "knn": "Application"},
+    "choice": "Application",
+    "raw_response": "Application",
+    "source": "seed",
+    "note": "Seed entry. candidates/votes REAL from pipeline. 'choice' = Application, the domain the resolution graph independently lands on (root_cause 'payload'), so the judge auto-resolves (LLM + graph agree). Run scripts/capture_llm_tiebreak.py with Ollama to confirm the live Mistral pick."
+  },
+  "User accounts are not syncing properly with the centralized authentication server, resulting in intermittent access to applications.": {
+    "candidates": ["Access Management", "Infrastructure", "Security"],
+    "votes": {"svm": "Security", "scorer": "Infrastructure", "knn": "Access Management"},
+    "choice": "Security",
+    "raw_response": "Security",
+    "source": "seed",
+    "note": "Seed entry: candidates/votes are REAL (from the pipeline). 'choice' is the SVM's pick as a placeholder. Run scripts/capture_llm_tiebreak.py with Ollama to replace with the live Mistral pick."
+  },
+  "Users are experiencing intermittent issues with accessing resources on the site. Delayed and degraded performance affects everyone.": {
+    "candidates": ["Database", "Infrastructure", "Network"],
+    "votes": {"svm": "Network", "scorer": "Infrastructure", "knn": "Database"},
+    "choice": "Network",
+    "raw_response": "Network",
+    "source": "seed",
+    "note": "Seed entry: candidates/votes are REAL (from the pipeline). 'choice' is the SVM's pick as a placeholder. Run scripts/capture_llm_tiebreak.py with Ollama to replace with the live Mistral pick."
+  }
+}

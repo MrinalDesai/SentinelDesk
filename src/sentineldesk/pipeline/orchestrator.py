@@ -98,6 +98,21 @@ class Pipeline:
         elif s.resolution and s.confidence >= self.auto_gate:
             s.outcome = "auto_resolved"
             s.reasoning.append(f"judge: confident ({s.confidence:.0%}) and a consistent resolution exists -> auto-resolve")
+        elif (
+            s.method == "llm_tiebreak"
+            and chain.resolution_category is not None
+            and chain.resolution_category == s.category
+        ):
+            # A tiebreak alone is low-confidence (0.5) and would normally escalate.
+            # But here a SECOND, independent subsystem — the symptom->cause->resolution
+            # graph — landed on the SAME team the LLM picked. Two independent signals
+            # agreeing is enough to auto-resolve, same principle as voter agreement.
+            # The LLM never auto-resolves on its own; the graph must confirm it.
+            s.outcome = "auto_resolved"
+            s.reasoning.append(
+                f"judge: LLM tiebreak ({s.category}) independently confirmed by the "
+                f"resolution graph -> two agreeing signals, auto-resolve"
+            )
         else:
             s.outcome = "escalated"
             s.reasoning.append("judge: routed, but no confident resolution -> escalate with context")

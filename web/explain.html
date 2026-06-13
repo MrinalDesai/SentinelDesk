@@ -64,6 +64,26 @@
   .status{max-width:920px;margin:0 auto;padding:0 24px;color:var(--dim);font-size:12px}
   .spinner{display:inline-block;width:12px;height:12px;border:2px solid var(--line);border-top-color:var(--signal);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle}
   @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* two-column layout: walkthrough + live pipeline map */
+  .layout{max-width:1280px;margin:0 auto;padding:26px 24px 80px;display:flex;gap:24px;align-items:flex-start}
+  .main{flex:1;min-width:0}
+  .map{width:300px;flex:none;position:sticky;top:18px}
+  .map .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px}
+  .map .ttl{font-family:var(--display);font-size:14px;font-weight:600;margin-bottom:4px}
+  .map .hint{font-size:10.5px;color:var(--dim);margin-bottom:10px}
+  /* pipeline-map node states */
+  .pn rect{fill:var(--panel2);stroke:var(--line);stroke-width:1;transition:.45s}
+  .pn text{fill:var(--dim);font-family:var(--mono);font-size:11px;transition:.45s}
+  .pe{stroke:var(--line);stroke-width:1.5;transition:.45s}
+  .pn.on rect{fill:rgba(61,220,132,.14);stroke:var(--signal)}
+  .pn.on text{fill:var(--ink)}
+  .pn.route rect{fill:rgba(93,180,255,.14);stroke:var(--blue)} .pn.route text{fill:#cfe6ff}
+  .pn.esc rect{fill:rgba(255,93,93,.13);stroke:var(--red)} .pn.esc text{fill:#ffd0d0}
+  .pn.ok rect{fill:rgba(61,220,132,.18);stroke:var(--signal)} .pn.ok text{fill:#d6ffe8}
+  .pe.on{stroke:var(--signal)} .pe.route{stroke:var(--blue)} .pe.esc{stroke:var(--red)}
+  .pn.dim2 rect{opacity:.35} .pn.dim2 text{opacity:.35} .pe.dim2{opacity:.2}
+  @media(max-width:900px){.layout{flex-direction:column}.map{width:100%;position:static}}
 </style>
 </head>
 <body>
@@ -78,7 +98,8 @@
 </header>
 <div class="status" id="status"></div>
 
-<div class="stage">
+<div class="layout">
+ <div class="main">
   <div class="ticketbar">
     <div class="lbl">Query</div>
     <input id="ticket" value="primary replica deadlock, connection pool exhausted overnight">
@@ -93,14 +114,122 @@
   <div class="canvas" id="canvas"><span class="dim">type a query and hit Explain</span></div>
 
   <div id="steps"></div>
+ </div>
+
+ <div class="map">
+  <div class="card">
+   <div class="ttl">Pipeline path</div>
+   <div class="hint">Lights up the exact route this ticket took.</div>
+   <svg id="pmap" viewBox="0 0 264 490" width="100%">
+    <line id="e_t_safety" class="pe" x1="100" y1="38" x2="100" y2="50"/>
+    <line id="e_safety_soc" class="pe" x1="148" y1="61" x2="168" y2="61"/>
+    <line id="e_safety_cls" class="pe" x1="100" y1="72" x2="100" y2="90"/>
+    <line id="e_cls_svm" class="pe" x1="100" y1="112" x2="100" y2="130"/>
+    <line id="e_svm_route" class="pe" x1="150" y1="141" x2="168" y2="141"/>
+    <line id="e_svm_vote" class="pe" x1="100" y1="152" x2="100" y2="176"/>
+    <line id="e_vote_route" class="pe" x1="152" y1="187" x2="168" y2="187"/>
+    <line id="e_vote_llm" class="pe" x1="100" y1="198" x2="100" y2="222"/>
+    <line id="e_llm_route" class="pe" x1="154" y1="233" x2="168" y2="233"/>
+    <line id="e_llm_esc" class="pe" x1="46" y1="233" x2="22" y2="233"/>
+    <line id="e_r1_rail" class="pe" x1="240" y1="141" x2="252" y2="141"/>
+    <line id="e_r2_rail" class="pe" x1="240" y1="187" x2="252" y2="187"/>
+    <line id="e_r3_rail" class="pe" x1="240" y1="233" x2="252" y2="233"/>
+    <line id="e_rail1" class="pe" x1="252" y1="141" x2="252" y2="187"/>
+    <line id="e_rail2" class="pe" x1="252" y1="187" x2="252" y2="233"/>
+    <line id="e_rail3" class="pe" x1="252" y1="233" x2="252" y2="311"/>
+    <line id="e_rail_res" class="pe" x1="252" y1="311" x2="148" y2="311"/>
+    <line id="e_res_judge" class="pe" x1="100" y1="322" x2="100" y2="340"/>
+    <line id="e_judge_ok" class="pe" x1="100" y1="362" x2="100" y2="410"/>
+    <line id="e_judge_esc" class="pe" x1="56" y1="351" x2="22" y2="351"/>
+    <line id="e_escrail_top" class="pe" x1="22" y1="233" x2="22" y2="351"/>
+    <line id="e_escrail_bot" class="pe" x1="22" y1="351" x2="22" y2="452"/>
+
+    <g class="pn" id="n_ticket"><rect x="60" y="16" width="80" height="22" rx="6"/><text x="100" y="31" text-anchor="middle">Ticket</text></g>
+    <g class="pn" id="n_safety"><rect x="52" y="50" width="96" height="22" rx="6"/><text x="100" y="65" text-anchor="middle">0 Safety</text></g>
+    <g class="pn" id="n_soc"><rect x="168" y="50" width="72" height="22" rx="6"/><text x="204" y="65" text-anchor="middle">owner</text></g>
+    <g class="pn" id="n_cls"><rect x="56" y="90" width="88" height="22" rx="6"/><text x="100" y="105" text-anchor="middle">normalize</text></g>
+    <g class="pn" id="n_svm"><rect x="50" y="130" width="100" height="22" rx="6"/><text x="100" y="145" text-anchor="middle">1 SVM gate</text></g>
+    <g class="pn" id="n_route1"><rect x="168" y="130" width="72" height="22" rx="6"/><text x="204" y="145" text-anchor="middle">route</text></g>
+    <g class="pn" id="n_vote"><rect x="48" y="176" width="104" height="22" rx="6"/><text x="100" y="191" text-anchor="middle">2 voters</text></g>
+    <g class="pn" id="n_route2"><rect x="168" y="176" width="72" height="22" rx="6"/><text x="204" y="191" text-anchor="middle">route</text></g>
+    <g class="pn" id="n_llm"><rect x="46" y="222" width="108" height="22" rx="6"/><text x="100" y="237" text-anchor="middle">3 LLM tiebreak</text></g>
+    <g class="pn" id="n_route3"><rect x="168" y="222" width="72" height="22" rx="6"/><text x="204" y="237" text-anchor="middle">route</text></g>
+    <g class="pn" id="n_res"><rect x="52" y="300" width="96" height="22" rx="6"/><text x="100" y="315" text-anchor="middle">4 resolve</text></g>
+    <g class="pn" id="n_judge"><rect x="56" y="340" width="88" height="22" rx="6"/><text x="100" y="355" text-anchor="middle">5 judge</text></g>
+    <g class="pn" id="n_ok"><rect x="52" y="410" width="96" height="22" rx="6"/><text x="100" y="425" text-anchor="middle">auto-resolve</text></g>
+    <g class="pn" id="n_esc"><rect x="6" y="452" width="84" height="22" rx="6"/><text x="48" y="467" text-anchor="middle">escalate</text></g>
+   </svg>
+  </div>
+ </div>
 </div>
 
 <script>
 const API=location.origin, $=id=>document.getElementById(id);
-const QUICK=[
-  ["Confident → Database", "primary replica deadlock, connection pool exhausted overnight"],
-  ["Tie → LLM tiebreak", "the internet is down and websites won't load"],
-  ["Security → SOC", "ransomware encrypting files on a finance workstation"],
+
+// ---- live pipeline map: highlight the exact path a ticket took ----
+function resetMap(){
+  document.querySelectorAll('#pmap .pn').forEach(n=>n.setAttribute('class','pn dim2'));
+  document.querySelectorAll('#pmap .pe').forEach(e=>e.setAttribute('class','pe dim2'));
+}
+function on(id,cls){ const el=$(id); if(!el) return; const base=id.charAt(0)==='e'?'pe ':'pn '; el.setAttribute('class', base+(cls||'on')); }
+function lightPath(d){
+  resetMap();
+  on('n_ticket','on'); on('e_t_safety','on'); on('n_safety','on');
+  if(d.safety && d.safety.escalated){ on('e_safety_soc','esc'); on('n_soc','esc'); return; }
+  on('e_safety_cls','on'); on('n_cls','on'); on('e_cls_svm','on'); on('n_svm','on');
+  const p=d.path, esc=(d.outcome==='escalated'||d.outcome==='safety_escalated');
+  let routed=false;
+  if(p==='confident_svm'){
+    on('e_svm_route','route'); on('n_route1','route');
+    on('e_r1_rail','route'); on('e_rail1','route'); on('e_rail2','route'); on('e_rail3','route'); on('e_rail_res','route'); routed=true;
+  } else {
+    on('e_svm_vote','on'); on('n_vote','on');
+    if(p==='agreement'){
+      on('e_vote_route','route'); on('n_route2','route');
+      on('e_r2_rail','route'); on('e_rail2','route'); on('e_rail3','route'); on('e_rail_res','route'); routed=true;
+    } else {
+      on('e_vote_llm','on'); on('n_llm','on');
+      if(p==='llm_tiebreak'){
+        on('e_llm_route','route'); on('n_route3','route');
+        on('e_r3_rail','route'); on('e_rail3','route'); on('e_rail_res','route'); routed=true;
+      } else { // 3-way split, no valid LLM pick -> escalate (bypasses resolution)
+        on('e_llm_esc','esc'); on('e_escrail_top','esc'); on('e_escrail_bot','esc'); on('n_esc','esc'); return;
+      }
+    }
+  }
+  if(routed){
+    on('n_res','on'); on('e_res_judge','on'); on('n_judge','on');
+    if(esc){ on('e_judge_esc','esc'); on('e_escrail_bot','esc'); on('n_esc','esc'); }
+    else { on('e_judge_ok','ok'); on('n_ok','ok'); }
+  }
+}
+const CASES=[
+  ["1 · Safety gate fires → escalate to incident owner",[
+    ["Ransomware → SOC Team", "ransomware encrypting files on a finance workstation"],
+    ["Data breach → SOC Team", "we suspect a data breach exposing customer PII records"],
+    ["DDoS → SOC + Network", "the network is under a DDoS attack, traffic flooding the gateway"],
+    ["Complete outage → Bridge Call P1", "the entire company network is down, total outage across all sites"],
+  ]],
+  ["2 · Confident SVM → auto-resolve",[
+    ["Database", "primary replica deadlock, connection pool exhausted overnight"],
+    ["Network", "A monitoring alert for packet loss was triggered overnight. Packet loss and latency have been reported intermittently on the network."],
+    ["Application", "Monitoring alert triggered overnight on application build pipeline. Performance degraded and user experience impacted."],
+  ]],
+  ["3 · Voter agreement → auto-resolve",[
+    ["SAML auth → Access Mgmt", "The team is experiencing erratic behavior when attempting to authenticate users with SAML assertions. This issue has been affecting the entire site for several days and is causing significant disruption to our operations."],
+    ["Degraded access → Access Mgmt", "A monitoring alert was triggered overnight for degraded access management system. Users are receiving permission denied errors while trying to access their accounts."],
+  ]],
+  ["4 · Voter agreement → judge mismatch → escalate",[
+    ["Internet down (route≠resolution)", "the internet is down and websites won't load"],
+    ["SAML access (route≠resolution)", "We are experiencing an issue where users are not able to access the site due to delayed or degraded SAML assertions. This is affecting the entire team."],
+  ]],
+  ["5 / 6 · 3-way split → LLM tiebreak (or escalate if Ollama down)",[
+    ["User accounts not syncing", "User accounts are not syncing properly with the centralized authentication server, resulting in intermittent access to applications."],
+    ["Intermittent resource access", "Users are experiencing intermittent issues with accessing resources on the site. Delayed and degraded performance affects everyone."],
+  ]],
+  ["7 · LLM tiebreak → auto-resolve (LLM pick confirmed by graph)",[
+    ["Application failure (LLM+graph agree)", "The application domain is experiencing sudden and complete failure with endpoints degraded and payloads failing to execute."],
+  ]],
 ];
 const SYN_QUICK=[
   ["casual → Network (vpn)", "can't connect to work from home and the calls keep breaking up"],
@@ -110,7 +239,16 @@ const SYN_QUICK=[
 const qb=$('quick');
 function renderQuick(){
   qb.innerHTML='';
-  ($('synmode').checked?SYN_QUICK:QUICK).forEach(([label,q])=>{const b=document.createElement('button');b.textContent=label;b.onclick=()=>{$('ticket').value=q;run();};qb.appendChild(b);});
+  if($('synmode').checked){
+    SYN_QUICK.forEach(([label,q])=>{const b=document.createElement('button');b.textContent=label;b.onclick=()=>{$('ticket').value=q;run();};qb.appendChild(b);});
+    return;
+  }
+  CASES.forEach(([group,items])=>{
+    const h=document.createElement('div'); h.textContent=group;
+    h.style.cssText='width:100%;font-size:11px;color:var(--mute);margin:8px 0 2px;font-family:var(--display)';
+    qb.appendChild(h);
+    items.forEach(([label,q])=>{const b=document.createElement('button');b.textContent=label;b.onclick=()=>{$('ticket').value=q;run();};qb.appendChild(b);});
+  });
 }
 $('synmode').addEventListener('change', renderQuick);
 renderQuick();
@@ -204,11 +342,27 @@ async function run(){
   const myRun=++RUN_ID;                      // new run supersedes any in-flight one
   const alive=()=>myRun===RUN_ID;
   $('go').disabled=true; $('steps').innerHTML=''; $('status').innerHTML='analysing <span class="spinner"></span>';
+  resetMap();
   const text=$('ticket').value;
   let d;
   try{ d=await (await fetch(API+'/api/explain',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text})})).json(); }
   catch(e){ $('status').innerHTML='<span style="color:var(--red)">backend not running — python web/server.py</span>'; $('go').disabled=false; return; }
   $('status').textContent='';
+  lightPath(d);
+
+  // Stage 0: the safety gate runs FIRST. A high-stakes match escalates immediately
+  // and bypasses the whole classification pipeline (exactly like the real system).
+  if(d.safety && d.safety.escalated){
+    panel(`<h3>0 · Safety gate (Stage 0) — high-stakes match</h3>
+      <div class="b">A deterministic safety pattern matched <span class="a">${d.safety.matched}</span>${d.safety.severity?` (<span class="a">${d.safety.severity}</span>)`:''}.
+      The ticket is escalated to <span class="g">${d.safety.department}</span> <span class="dim">in ${d.safety.latency_ms} ms</span> — <b>bypassing classification, the voter ladder, the LLM and retrieval entirely</b>. A critical incident must never wait on a model.</div>`);
+    await sleep(700); if(!alive()) return;
+    const v=document.createElement('div'); v.className='verdict edge';
+    v.innerHTML=`→ ESCALATED (safety gate): ${d.category} <span class="s">matched ${d.safety.matched} · no classification run</span>`;
+    $('steps').appendChild(v); requestAnimationFrame(()=>requestAnimationFrame(()=>v.classList.add('in')));
+    v.scrollIntoView({behavior:'smooth',block:'center'});
+    $('go').disabled=false; return;
+  }
 
   // show a normalization step first IF it was load-bearing (casual -> canonical)
   if(d.norm_helped){
@@ -216,6 +370,10 @@ async function run(){
       <span class="k">before:</span> ${d.text}<br><span class="g">after:</span> ${d.normalized}</div>`);
     await sleep(900); if(!alive()) return;
   }
+
+  // step 0 (safe path): the safety gate ran and found nothing high-stakes
+  panel(`<h3>0 · Safety gate — clear</h3><div class="b">No high-stakes pattern matched, so the ticket proceeds to classification. <span class="dim">(A breach/ransomware/outage match here would escalate immediately and skip everything below.)</span></div>`);
+  await sleep(600); if(!alive()) return;
 
   const spans=renderWords(d.glow_text||d.normalized||text);
   await sleep(500); if(!alive()) return;
@@ -236,14 +394,18 @@ async function run(){
     await sleep(900); if(!alive()) return;
   }
 
-  // step 3: explanation
-  panel(`<h3>3 · Explanation</h3><div class="b">The classifier reads the lit terms and scores each domain. The
+  const sc_cat = (d.scorer&&d.scorer.category)||d.category;
+  const edge   = !!(d.scorer&&d.scorer.is_edge_case);
+  const dec    = d.decision||{};
+
+  // step 3: explanation (scorer reads the lit terms)
+  panel(`<h3>3 · Explanation</h3><div class="b">The deterministic scorer reads the lit terms and scores each domain. The
     <span class="g">${d.unique_terms.length?d.unique_terms.join(', '):'matched'}</span> signal points to
-    <span class="g">${d.category}</span>${d.is_edge_case?` — but it's close (<span class="a">${d.edge_reason||'edge case'}</span>), so it won't decide alone.`:'.'}</div>`);
+    <span class="g">${sc_cat}</span>${edge?` — but it's close (<span class="a">${(d.scorer&&d.scorer.edge_reason)||'edge case'}</span>), so the scorer can't decide alone.`:'.'}</div>`);
   await sleep(900); if(!alive()) return;
 
-  // step 4: scores bars
-  const sc=panel(`<h3>4 · Deterministic scorer</h3><div class="b">Per-domain score (transparent, auditable):</div><div class="scores" id="scbars"></div>`);
+  // step 4: scores bars (the scorer — one of three voters)
+  const sc=panel(`<h3>4 · Deterministic scorer (voter 1 of 3)</h3><div class="b">Per-domain score (transparent, auditable):</div><div class="scores" id="scbars"></div>`);
   const max=Math.max(...Object.values(d.scores),1);
   const sb=sc.querySelector('#scbars');
   Object.entries(d.scores).slice(0,5).forEach(([k,v])=>{ const r=document.createElement('div'); r.className='row';
@@ -251,24 +413,61 @@ async function run(){
   await sleep(60); if(!alive()) return; sb.querySelectorAll('i').forEach((bar,idx)=>{ const v=Object.values(d.scores)[idx]; bar.style.width=Math.round(v/max*100)+'%'; });
   await sleep(1000); if(!alive()) return;
 
-  // step 5: path — scorer decides, OR tiebreak prompt on ties
-  if(!d.is_edge_case){
-    panel(`<h3>5 · Decision (common path)</h3><div class="b">Confident — the deterministic scorer decides. <span class="dim">No LLM needed (this is ~99% of tickets).</span></div>`);
-  } else {
+  // step 5: the trained SVM + its confidence gate
+  const svm=d.svm||{};
+  const gatePass = !!svm.passed_gate;
+  panel(`<h3>5 · SVM classifier + confidence gate</h3><div class="b">The trained TF-IDF + linear SVM predicts
+    <span class="${gatePass?'g':'a'}">${svm.category}</span> at <b>${((svm.confidence||0)*100).toFixed(0)}%</b>.
+    Gate = ${((svm.gate||0.8)*100).toFixed(0)}%.
+    ${gatePass
+      ? '<span class="g">Above the gate → the SVM routes directly; the ladder and LLM are not needed.</span>'
+      : '<span class="a">Below the gate → fall through to the 3-voter ladder.</span>'}</div>`);
+  await sleep(900); if(!alive()) return;
+
+  // step 6: the voter ladder (scorer + SVM + kNN) — only meaningful when the gate wasn't passed
+  if(!gatePass){
+    const knn=d.knn||{}; const votes=dec.votes||{};
+    panel(`<h3>6 · Voter ladder — scorer + SVM + kNN</h3>
+      <div class="b">Three independent voters are compared; 2 of 3 agreeing routes the ticket:</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:10px 0">
+        <div style="background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:10px">
+          <div style="font-size:12px;color:var(--mute)">Deterministic scorer</div><span class="chip uniq">${votes.scorer||sc_cat}</span></div>
+        <div style="background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:10px">
+          <div style="font-size:12px;color:var(--mute)">SVM</div><span class="chip freq">${votes.svm||svm.category}</span></div>
+        <div style="background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:10px">
+          <div style="font-size:12px;color:var(--mute)">kNN (5 nearest)</div><span class="chip layman">${votes.knn||knn.category}</span></div>
+      </div>
+      <div class="b ${dec.method==='agreement'?'g':'a'}">${
+        dec.method==='agreement' ? ((d.agreement_fraction||'2/3')+' voters agree \u2192 route by agreement (no LLM). Note: this is voter agreement, not model certainty.')
+        : dec.method==='llm_tiebreak' ? 'Genuine 3-way split \u2192 the LLM tiebreak runs.'
+        : dec.method==='escalated' ? 'Voters could not resolve \u2192 escalate to a human.'
+        : 'Voters compared.'}</div>`);
+    await sleep(900); if(!alive()) return;
+  }
+
+  // step 7: LLM tiebreak — ONLY when the resolver actually reached it
+  if(dec.method==='llm_tiebreak'){
     const tb=d.tiebreak||{};
     const promptEsc=(tb.prompt||'').replace(/</g,'&lt;')
         .replace(/Lexical evidence found: (.*)/,'Lexical evidence found: <span class="ev">$1</span>');
-    // the model may answer in a sentence; show the matched candidate cleanly
-    let choice=tb.llm_choice||'';
+    let choice=tb.llm_choice||dec.category||'';
     if(choice && tb.candidates){ const hit=tb.candidates.find(c=>choice.toLowerCase().includes(c.toLowerCase())); if(hit) choice=hit; }
-    panel(`<h3>5 · It's a tie → the LLM tiebreak prompt runs</h3><div class="b">Voters were close, so the matched evidence is assembled into the tiebreak prompt (used on ~0.3% of tickets):</div>
+    panel(`<h3>7 · 3-way split → LLM tiebreak (rare)</h3>
+      <div class="b">The three voters genuinely disagreed, so the matched evidence is assembled into a constrained prompt — the local model must pick one of the tied candidates at temperature 0:</div>
       <pre>${promptEsc}</pre>
-      ${tb.llm_choice?`<div class="b">LLM chose: <span class="g">${choice}</span></div>`:'<div class="b dim">(start Ollama to run the prompt live)</div>'}`);
+      <div class="b">LLM chose: <span class="g">${choice}</span> <span class="dim">${tb.source==='ollama'?'(live Ollama)':tb.source==='cache'?'(replayed from a recorded Ollama run)':'(seed — run capture_llm_tiebreak.py with Ollama for the live pick)'}</span></div>
+      <div class="b dim">A tiebreak is low-confidence on its own, so the LLM never auto-resolves alone. The judge will auto-resolve <i>only if</i> the resolution graph independently lands on the same team; otherwise it escalates to a human with this suggested route.</div>`);
+    await sleep(900); if(!alive()) return;
+  } else if(dec.method==='escalated'){
+    const split = dec.votes && new Set(Object.values(dec.votes)).size>=3;
+    panel(`<h3>7 · Escalated to a human</h3><div class="b">${
+      split ? 'The three voters split three ways and the local model was not reachable (or returned an invalid pick), so the system escalates rather than guess. <span class="dim">Start Ollama to let the LLM tiebreak decide this one live.</span>'
+            : 'Evidence was too weak or contradictory to route safely, so the system escalates rather than guesses.'}</div>`);
+    await sleep(700); if(!alive()) return;
   }
-  await sleep(900); if(!alive()) return;
 
-  // step 6: hybrid retrieval — fetch and show the three rankers fusing for the resolution
-  const hp=panel(`<h3>6 · Hybrid retrieval (grounding the fix)</h3><div class="b">For the resolution, three retrievers rank in parallel and fuse — <span class="dim" id="hload">loading the embedding model on first run…</span></div><div id="hbox"></div>`);
+  // step 8: hybrid retrieval — grounds the FIX for the team already routed above
+  const hp=panel(`<h3>8 · Hybrid retrieval — grounding the fix</h3><div class="b">Routing is done; now the resolution is grounded. Three retrievers rank in parallel and fuse — <span class="dim" id="hload">loading the embedding model on first run…</span></div><div id="hbox"></div>`);
   let h=null;
   try{
     const ctrl=new AbortController(); const to=setTimeout(()=>ctrl.abort(),90000);
@@ -288,6 +487,7 @@ async function run(){
     }
     html+='</div>';
     html+=`<div class="b">Reciprocal-rank fusion → <span class="g">${h.category}</span> (${h.confidence})</div>`;
+    html+=`<div class="b dim" style="margin-top:6px">Note: the hybrid fusion above is the broader retrieval demo. The <b>judge</b> (next step) grounds its decision on the <b>Graph RAG</b> resolution specifically — so if Graph RAG abstains here, the judge's resolution domain is "—" even when BM25/semantic found a match.</div>`;
     hp.querySelector('.dim').textContent='';
     hbox.innerHTML=html;
   } else {
@@ -295,9 +495,40 @@ async function run(){
   }
   await sleep(1000); if(!alive()) return;
 
-  // verdict
-  const v=document.createElement('div'); v.className='verdict'+(d.is_edge_case?' edge':'');
-  v.innerHTML=`→ ${d.category} <span class="s">${(d.confidence*100).toFixed(0)}% confidence · ${d.path}</span>`;
+  // step 9: the judge — reconcile route vs. resolution, decide auto-resolve or escalate
+  const j=d.judge||{};
+  const jm=!!j.mismatch;
+  panel(`<h3>9 · Judge — auto-resolve or escalate</h3>
+    <div class="b">The judge checks that the routed team and the grounded resolution agree:</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:8px 0">
+      <div style="background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:10px">
+        <div style="font-size:12px;color:var(--mute)">Routed to</div><span class="chip uniq">${j.route_category||d.category}</span></div>
+      <div style="background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:10px">
+        <div style="font-size:12px;color:var(--mute)">Resolution domain</div><span class="chip ${jm?'layman':'uniq'}">${j.resolution_category||'—'}</span></div>
+    </div>
+    <div class="b ${j.outcome==='auto_resolved'?'g':'a'}">${
+      jm ? `Route (${j.route_category}) and resolution (${j.resolution_category}) <b>disagree</b> \u2192 the judge escalates instead of presenting a contradictory answer.`
+         : `Route and resolution agree \u2192 the judge ${j.outcome==='auto_resolved'?'auto-resolves':'proceeds'}.`}</div>`);
+  await sleep(900); if(!alive()) return;
+
+  // verdict — the FINAL judged outcome, with the SPECIFIC escalation reason named
+  const esc=(d.outcome==='escalated'||d.outcome==='safety_escalated');
+  let outTxt, reason;
+  if(!esc){
+    outTxt='AUTO-RESOLVED';
+    reason = (d.path==='confident_svm') ? 'confident SVM route'
+           : (d.path==='llm_tiebreak') ? `LLM picked ${d.category}, independently confirmed by the resolution graph`
+           : `${d.agreement_fraction||''} voter agreement`.trim();
+  } else {
+    outTxt='ESCALATED to a human';
+    if(d.outcome==='safety_escalated'){ reason='safety gate \u2014 '+((d.safety&&d.safety.matched)||'high-stakes'); }
+    else if(d.path==='llm_tiebreak'){ reason=`LLM suggested ${d.category}; tiebreak below auto-resolve gate \u2192 escalate with suggested route`; }
+    else if(jm){ reason=`route/resolution mismatch (${j.route_category} vs ${j.resolution_category})`; }
+    else if(d.path==='escalated' && dec.votes && new Set(Object.values(dec.votes)).size>=3){ reason='3-way split \u2014 no valid LLM tiebreak'; }
+    else { reason='insufficient / contradictory signal'; }
+  }
+  const v=document.createElement('div'); v.className='verdict'+(esc?' edge':'');
+  v.innerHTML=`→ ${outTxt}: ${d.category} <span class="s">${reason}</span>`;
   $('steps').appendChild(v); requestAnimationFrame(()=>requestAnimationFrame(()=>v.classList.add('in')));
   v.scrollIntoView({behavior:'smooth',block:'center'});
   $('go').disabled=false;
