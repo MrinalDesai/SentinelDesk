@@ -90,7 +90,7 @@ def _boot():
                                "text": r.get("description", r.get("text", "")),
                                "truth": r.get("category", "")})
     STATE.update(cv=cv, svm=svm, scorer=scorer, knn=knn, resolver=resolver,
-                 graph=graph, pipe=pipe, sample=sample)
+                 graph=graph, pipe=pipe, sample=sample, train=train)
     # learning-loop context (held-out split + llm kind), isolated bonus feature
     try:
         import optimize as _opt
@@ -440,6 +440,221 @@ def api_synonym_compare(t: ExplainIn):
         "prompt_evidence": norm_evidence,
         "with_confident": not norm.is_edge_case,
     })
+
+
+def _datagen_model():
+    """Build the per-category word model from the real corpus once, cache it."""
+    if "datagen_model" in STATE:
+        return STATE["datagen_model"]
+    from sentineldesk.data_gen.word_model import CategoryWordModel
+    from sentineldesk.vocabulary.analysis import ngram_counts_by_category, tfidf_weights_by_category
+    syn = ROOT / "data" / "synthetic_tickets.csv"
+    src = load_tickets_csv(syn) if syn.exists() else STATE["train"]
+    model = CategoryWordModel.from_corpus(src)
+    STATE["datagen_model"] = {
+        "model": model,
+        "ngram": ngram_counts_by_category(src, top_n=10),
+        "tfidf": tfidf_weights_by_category(src, top_n=10),
+        "by_cat": {c: [t for t in src if t.category == c] for c in model.categories},
+        "n": len(src),
+    }
+    return STATE["datagen_model"]
+
+
+class DataGenIn(BaseModel):
+    category: str = "Network"
+    seed: int = 7
+    live: bool = False
+
+
+@app.post("/api/datagen")
+def api_datagen(inp: DataGenIn):
+    """Walk the real term-seeded generation: n-gram + TF-IDF -> word model ->
+    sample -> prompt -> LLM writes -> exclusivity gate. All deterministic steps
+    run live on the real corpus; the LLM-write step is live if Ollama is up,
+    else shows a real ticket from the generated corpus."""
+    import random
+    from sentineldesk.data_gen.prompts import SCENARIO_HINTS, SEEDED_SYSTEM, build_seeded_prompt
+    from sentineldesk.data_gen.parsers import parse_single_ticket
+
+    dg = _datagen_model()
+    model = dg["model"]
+    C = inp.category if inp.category in model.categories else model.categories[0]
+
+    # Step A — the two analyses (real numbers)
+    ngram = [{"term": t, "count": f} for t, f in dg["ngram"].get(C, [])[:8]]
+    tfidf = [{"term": t, "weight": round(w, 4)} for t, w in dg["tfidf"].get(C, [])[:8]]
+
+    # Step B — word model
+    frequent = [{"term": t, "weight": w} for t, w in model.frequent.get(C, [])[:8]]
+    unique = model.unique.get(C, [])
+    forbidden_sample = sorted(list(model.forbidden.get(C, set())))[:12]
+
+    # Step C — sample terms (real draw for the given seed)
+    rng = random.Random(inp.seed)
+    seed_terms = model.sample_terms(C, rng)
+
+    # Step D — prompt
+    scenario = random.Random(inp.seed).choice(SCENARIO_HINTS)
+    prompt = build_seeded_prompt(C, seed_terms, scenario)
+
+    # Step E — LLM writes (live if possible, else a real corpus ticket)
+    ticket = None
+    gen_mode = "corpus_example"
+    if inp.live:
+        try:
+            raw = STATE["llm"].complete(prompt, system=SEEDED_SYSTEM, temperature=0.9, json_mode=True)
+            ticket = parse_single_ticket(raw)
+            if ticket:
+                gen_mode = "live_llm"
+        except Exception:
+            ticket = None
+    if ticket is None:
+        pool = dg["by_cat"].get(C, [])
+        ex = random.Random(inp.seed).choice(pool) if pool else None
+        if ex:
+            ticket = {"title": ex.title or "", "description": ex.description or "",
+                      "resolution": getattr(ex, "resolution", "") or ""}
+    ticket = ticket or {"title": "", "description": "", "resolution": ""}
+
+    # Step F — exclusivity gate (real)
+    blob = f"{ticket.get('title','')} {ticket.get('description','')}".lower()
+    own_terms = [t for t, _ in model.frequent.get(C, [])] + model.unique.get(C, [])
+    import re as _re
+    def _present(term, text):
+        return _re.search(r"\b" + _re.escape(term) + r"\b", text) is not None
+    matched_own = [t for t in own_terms if _present(t, blob)][:6]
+    matched_forbidden = [f for f in model.forbidden.get(C, set()) if _present(f, blob)][:6]
+    accepted = bool(matched_own) and not matched_forbidden
+
+    return JSONResponse({
+        "category": C, "categories": model.categories, "seed": inp.seed, "corpus_n": dg["n"],
+        "ngram": ngram, "tfidf": tfidf,
+        "frequent": frequent, "unique": unique, "forbidden_sample": forbidden_sample,
+        "seed_terms": seed_terms, "scenario": scenario, "prompt": prompt,
+        "ticket": ticket, "gen_mode": gen_mode,
+        "gate": {"matched_own": matched_own, "matched_forbidden": matched_forbidden, "accepted": accepted},
+    })
+
+
+@app.get("/api/external")
+def api_external(min_n: int = 20):
+    """Score the trained model on the real curated Zenodo benchmark and return
+    per-domain accuracy, the trustworthy (n>=min_n) figure, confusion, confidence,
+    and sample predictions. All computed live from external_test/zenodo_clean.csv."""
+    import csv as _csv, statistics
+    from collections import Counter, defaultdict
+    from sentineldesk.classifier import SVMClassifier, load_model
+    data = ROOT / "external_test" / "zenodo_clean.csv"
+    model = ROOT / "data" / "svm_model.pkl"
+    if not data.exists() or not model.exists():
+        return JSONResponse({"error": "benchmark or model not found",
+                             "have_data": data.exists(), "have_model": model.exists()})
+    rows = list(_csv.DictReader(open(data, encoding="utf-8")))
+    clf = SVMClassifier(load_model(model))
+    cv = STATE["cv"]
+    per, per_ok = Counter(), Counter()
+    confusion = defaultdict(Counter)
+    confs = []
+    samples = defaultdict(list)
+    for r in rows:
+        text, label = r["text"], r["label"]
+        pred, conf = clf.predict(cv.normalize(text))
+        confs.append(conf)
+        per[label] += 1
+        if pred == label:
+            per_ok[label] += 1
+        else:
+            confusion[label][pred] += 1
+        if len(samples[label]) < 2:
+            samples[label].append({"text": text[:90], "pred": pred,
+                                   "conf": round(conf, 2), "ok": pred == label})
+    big = [d for d in per if per[d] >= min_n]
+    big_n = sum(per[d] for d in big); big_ok = sum(per_ok[d] for d in big)
+    per_domain = [{"domain": d, "ok": per_ok[d], "n": per[d],
+                   "acc": round(per_ok[d] / per[d], 3), "trustworthy": per[d] >= min_n}
+                  for d in sorted(per, key=lambda x: -per[x])]
+    conf_table = [{"domain": d, "misses": [{"to": k, "n": v} for k, v in confusion[d].most_common()]}
+                  for d in sorted(confusion) if per[d] >= min_n]
+    hi = sum(1 for c in confs if c >= 0.80)
+    return JSONResponse({
+        "total": len(rows), "min_n": min_n,
+        "per_domain": per_domain,
+        "headline": {"ok": big_ok, "n": big_n,
+                     "acc": round(big_ok / big_n, 3) if big_n else 0,
+                     "domains": sorted(big)},
+        "confusion": conf_table,
+        "confidence": {"mean": round(statistics.mean(confs), 2) if confs else 0,
+                       "over_80": hi, "total": len(confs),
+                       "over_80_pct": round(hi / len(confs), 3) if confs else 0},
+        "samples": {d: samples[d] for d in sorted(samples)},
+        "source": "external_test/zenodo_clean.csv (Zenodo record 7384758, CC BY-SA)",
+    })
+
+
+@app.get("/external", response_class=HTMLResponse)
+def external_page():
+    html = (ROOT / "web" / "external.html")
+    return html.read_text(encoding="utf-8") if html.exists() else "<h1>external.html missing</h1>"
+
+
+@app.get("/api/datagen_sources")
+def api_datagen_sources():
+    """Real example content for each of the four data files, read from the actual
+    source — shown as cached examples (not live generation) in the sub-tabs."""
+    from sentineldesk.data_gen.controlled import SIGNATURE_LEXICON, generate_controlled_corpus
+    from sentineldesk.data_gen.layman_map import LAYMAN_MAP
+    # signature lexicon sample (hand-authored)
+    sig = {c: SIGNATURE_LEXICON[c] for c in list(SIGNATURE_LEXICON)[:4]}
+    # controlled corpus real examples (deterministic, no LLM)
+    cc = generate_controlled_corpus(per_category=3, seed=7)
+    controlled_ex = [{"title": t.title, "description": t.description, "category": t.category}
+                     for t in cc[:4]]
+    # layman map sample (hand-curated)
+    lay = {}
+    for c in list(LAYMAN_MAP)[:3]:
+        lay[c] = {k: LAYMAN_MAP[c][k] for k in list(LAYMAN_MAP[c])[:4]}
+    # edge cases real examples from the file
+    edge = []
+    ep = ROOT / "data" / "edge_cases.csv"
+    if ep.exists():
+        import csv as _csv
+        with open(ep, encoding="utf-8") as fh:
+            for i, row in enumerate(_csv.DictReader(fh)):
+                if i >= 5:
+                    break
+                edge.append({"title": row.get("title", ""), "description": row.get("description", ""),
+                             "category": row.get("category", "")})
+    return JSONResponse({"signature": sig, "controlled": controlled_ex, "layman": lay, "edge": edge})
+
+
+@app.get("/api/syn_seeds")
+def api_syn_seeds():
+    """Real n-gram and TF-IDF top terms per domain — the live seeds the
+    Synonym Generation tab expands. Read live from the corpus."""
+    from sentineldesk.vocabulary.analysis import ngram_counts_by_category, tfidf_weights_by_category
+    tickets = STATE["train"]
+    ng = ngram_counts_by_category(tickets, top_n=4)
+    tf = tfidf_weights_by_category(tickets, top_n=4)
+    out = {}
+    for cat in sorted(set(list(ng) + list(tf))):
+        out[cat] = {
+            "ngram": [[t, int(c)] for t, c in ng.get(cat, [])[:3]],
+            "tfidf": [[t, round(float(w), 4)] for t, w in tf.get(cat, [])[:3]],
+        }
+    return JSONResponse(out)
+
+
+@app.get("/synonyms", response_class=HTMLResponse)
+def synonyms_page():
+    html = (ROOT / "web" / "synonym_demo.html")
+    return html.read_text(encoding="utf-8") if html.exists() else "<h1>synonym_demo.html missing</h1>"
+
+
+@app.get("/datagen", response_class=HTMLResponse)
+def datagen_page():
+    html = (ROOT / "web" / "datagen.html")
+    return html.read_text(encoding="utf-8") if html.exists() else "<h1>datagen.html missing</h1>"
 
 
 class CorrectIn(BaseModel):
