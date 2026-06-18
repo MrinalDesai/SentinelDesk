@@ -1,123 +1,200 @@
 # SentinelDesk
 
-**An on-premise, agentic IT-support system — classification, routing, grounded resolution, and honest escalation.**
+**Agentic ITSM ticket triage — rules own safety, retrieval owns grounding, the LLM owns reasoning, and a deterministic ladder owns the routing.**
 
-SentinelDesk takes an IT-support ticket and decides which of seven technical domains it belongs to, routes it to the right team, suggests a resolution grounded in past ticket history, and escalates anything it isn't confident about. It runs fully on-premise: a local LLM (Mistral-7B via Ollama) is consulted on under 1% of tickets — the rest is decided by deterministic, interpretable components.
+SentinelDesk takes an incoming IT support ticket (a title + free-text description, often in casual/layman language) and routes it to the correct team across seven ITSM domains. The high-volume decisions are made deterministically and cheaply; the LLM is used only where it genuinely adds value; and every decision is explainable and auditable.
 
-**Thesis:** Deterministic where it counts, semantic where it helps, the LLM only when nothing else can decide.
+**Domains:** Network · Access Management · Database · Application · Security · Infrastructure · Storage
 
-**Escalation ladder:** Easy → rules · Hard → ML · Ambiguous → voter ladder · Rare ties → LLM · High risk → human
+---
 
-**Domains:** Infrastructure · Application · Security · Database · Storage · Network · Access Management
+## Design principle
 
-## Architecture
+> Rules own safety, retrieval owns grounding, the LLM owns reasoning.
 
-Five components over a shared state — expressible as a LangGraph StateGraph (included in the repo), run as a dependency-free serial pipeline in the demo — each doing as little work as the difficulty requires:
+The right tool is used for each job rather than calling an LLM for everything. Deterministic classifiers handle the bulk of routing in milliseconds, retrieval grounds decisions in real evidence, and the LLM is reserved for genuine tie-breaks. The result is fast, cheap, predictable, and auditable.
 
-```
-ticket -> [1 Safety] -> [2 Classify] -> [3 Route] -> [4 Resolve] -> [5 Judge] -> outcome
-            regex         SVM+scorer      ladder       hybrid          consistency
-                                                       retrieval        guard
-```
+---
 
-1. **Safety gate** — regex catches high-stakes tickets (breach, ransomware, outage) and escalates to the right team before any model runs.
-2. **Classify** — a linear SVM + a deterministic scorer classify the **raw ticket text** over a two-layer TF-IDF / n-gram vocabulary; the scorer additionally matches casual layman phrasings as one evidence signal (not a pre-classification rewrite).
-3. **Route** — confidence-gated: confident tickets route directly; ambiguous ones climb a voter ladder (scorer + SVM + kNN); a genuine three-way split gets a bounded LLM tiebreak; anything still unresolved escalates to a human.
-4. **Resolve** — hybrid retrieval: BM25 + BGE-M3 semantic search (Qdrant) + Graph RAG, fused by Reciprocal Rank Fusion.
-5. **Judge** — auto-resolve only if confident and the routing domain matches the resolution's domain; else escalate.
+## How routing works
 
-The deterministic classification core (SVM + TF-IDF + scorer + kNN) is the primary path; hybrid retrieval and the semantic fallback are additive layers for grounding and edge cases.
+A ticket's title and description are combined into raw text and passed, as-is, to the classifiers. The router then walks a decision ladder:
 
-## Key Features
+1. **SVM confidence gate** — a linear SVM over TF-IDF features predicts the domain; if confident, the ticket resolves immediately. This single gate resolves **~92.8%** of tickets (accuracy ~1.00 on the held-out set).
+2. **Voter ladder (scorer + SVM + kNN)** — three independent voters weigh in:
+   - **DeterministicScorer** — keyword/evidence-signal scoring. It matches layman and synonym phrasings *as an evidence signal* — it does **not** rewrite or pre-classify the ticket.
+   - **SVM** — the same linear classifier.
+   - **kNN** — instance-based vote against the labelled corpus.
+   When they agree, the ticket resolves (~6.8% of tickets).
+3. **LLM tie-break** — only when the voters genuinely disagree does a local LLM (Mistral-7B) arbitrate. By design this fires rarely, inside the small escalation band.
+4. **Escalate** — anything still unresolved (~0.3%) goes to a human.
 
-- **Deterministic safety gate** — high-stakes tickets escalated by rule before any model runs.
-- **Vocabulary-guided classification** — SVM + auditable scorer over frequent and unique TF-IDF / n-gram terms, the scorer matching casual layman phrasings as an evidence signal.
-- **Confidence-gated agentic routing** — a confidence-gated voter ladder that escalates instead of guessing.
-- **Hybrid retrieval** — BM25 + BGE-M3/Qdrant semantic + Graph RAG, fused via RRF.
-- **Semantic edge-case fallback** — embeddings used precisely where lexical methods break.
-- **Self-correction** — learns a new synonym from a human's reroute (no retraining), guarded and audited.
-- **Explainability** — every decision emits a grounded reasoning chain.
-- **Audit log** — every routing decision recorded (timestamp, agent decisions, confidence).
-- **Security** — PII redaction, encryption at rest, RBAC; runs zero-cloud.
+**Net result:** ~99.6% of tickets resolved deterministically; overall routing accuracy **~0.980** on the held-out corpus.
 
-## Demo (web)
+> A separate semantic-fallback module exists in the codebase but is **not** a rung in this routing ladder.
 
-```
-python web/server.py        # -> http://127.0.0.1:8000
-```
+---
 
-Ten connected tabs:
+## Retrieval & grounding (RAG)
 
-- `/` **Console** — run a ticket through every layer; an agent-flow strip shows which of the five stages fired or was skipped.
-- `/explain` **Explain** — watch the query light up term by term, the scorer decide, and (on ties) the LLM tiebreak prompt assemble; includes a synonym-compare mode (classify with vs without normalization).
-- `/hybrid` **Hybrid** — BM25, semantic (BGE-M3/Qdrant), and Graph RAG ranking side by side, fused by RRF.
-- `/vocab` **Vocabulary** — searchable per-domain TF-IDF and n-gram terms.
-- `/synonyms` **Synonyms** — how new casual→technical synonyms are proposed, scored, and selected (generation).
-- `/learn` **Live Learning** — the held-out keyword/prompt optimizer loop.
-- `/audit` **Audit Log** — the live decision trail.
-- `/correct` **Self-Correction** — a misrouted ticket, a human correction, and the same ticket routed correctly afterward (no retraining).
-- `/external` **External** — accuracy on the public Zenodo dataset of real tickets.
-- `/datagen` **Data Gen** — the seeded synthetic-ticket generation pipeline.
+Hybrid retrieval ranks evidence with three retrievers combined via reciprocal-rank fusion:
 
-## Tech Stack
+- **BM25** lexical retrieval
+- **Semantic** retrieval using **BGE-M3** embeddings (vector search via **Qdrant**, in-memory)
+- **Graph-RAG** retrieval
 
-Python 3.11 · scikit-learn (TF-IDF + linear SVM) · NLTK · rank-bm25 · Mistral-7B-Instruct-Q8 via Ollama · sentence-transformers (BGE-M3) · Qdrant (embedded / in-memory; scales to a hosted cluster) · NetworkX (Graph RAG) · LangGraph · FastAPI · cryptography.
+A graph-RAG **judge** supervises routing decisions, grounding them in retrieved evidence.
 
-## Installation
+*Deployment-roadmap (stated honestly as not-yet-productionised): a persistent/relational store, containerisation, and a persistent vector index.*
+
+---
+
+## Vocabulary, synonyms & self-correction
+
+- **Controlled vocabulary** — the canonical evidence terms per domain used by the scorer.
+- **Layman/synonym matching** — casual phrasings are matched to domain evidence signals *inside the scorer* (an evidence signal, not a pre-routing rewrite).
+- **Self-correction** — correct a misroute once and that phrasing is never routed wrong again: a vocabulary/dictionary update, not a model retrain. Guards reject generic phrases and collisions so a correction can't create a "magnet" class.
+- **Live learning** — corrections feed back into the vocabulary in place.
+
+---
+
+## The Improve loop — agentic retraining (LangGraph)
+
+A separate, self-improving loop that diagnoses the classifier's weaknesses, fixes them, and keeps the new model only if it genuinely validates better. This is the system's concrete **agentic + LangGraph** component — a real compiled `StateGraph` (langgraph), six agents over a shared state:
 
 ```
-git clone https://github.com/MrinalDesai/SentinelDesk.git
-cd SentinelDesk
+diagnose -> plan -> [retrain -> ground -> validate] -> judge -> SVM candidate
+                 \__(data healthy)____________________> judge
+```
+
+The branch after `plan` is a **real LangGraph conditional edge** (`add_conditional_edges`): if any test trips, take the full retrain path; if the data is healthy, skip straight to the judge and change nothing.
+
+**Agents:** `diagnose` (run tests + train baseline) → `plan` (collect remedies) → `retrain` (apply remedies, retrain candidate SVM) → `ground` (RAG retrieval of nearest tickets) → `validate` (held-out, candidate vs baseline) → `judge` (accept only if improved; write `svm_candidate.pkl`, else keep baseline). The Improve-loop judge is a **model-promotion gate** — separate from the graph-RAG judge in the live router.
+
+**Data-driven problem → test → remedy table** (only tripped tests are fixed):
+
+| Problem | Test | Trips | Remedy |
+|---|---|---|---|
+| Class imbalance | max/min class-size ratio | ≥ 3:1 | SMOTE oversampling |
+| Noisy generic tokens | stopword fraction | > 0.50 | remove English stopwords |
+| Short / low-signal text | median tokens per ticket | < 12 | add bigrams (1–2 grams) |
+| Duplicate tickets | exact-duplicate count | > 0 | deduplicate |
+| Class too rare to synthesize | smallest class size | < 5 | flag for data collection |
+
+It targets the **SVM** — the only trained model in the deterministic tier (kNN is instance-based, the scorer is rule-based) and the highest-leverage one (it resolves ~92% of tickets on the fast path).
+
+**Isolated by design:** reads data read-only, writes **only** to `improvement/out/`, never touches the production model (`data/svm_model.pkl`), the source tree, or any live route. It *proposes* a better SVM; promoting it is a deliberate, separate human step.
+
+Run it standalone:
+```bash
+python improvement/agentic_retrain.py            # induced hard case  -> retrain path -> ACCEPT
+python improvement/agentic_retrain.py balanced   # healthy data       -> skip path    -> no change
+```
+
+---
+
+## Web app
+
+A FastAPI app serving eleven self-contained tabs:
+
+| Tab | What it shows |
+|---|---|
+| **Console** | Submit a ticket and watch it get triaged / routed |
+| **Explain** | Decision explainability — why a ticket went where (SVM / scorer / kNN reasoning) |
+| **Hybrid** | Hybrid retrieval: BM25 + semantic + Graph-RAG, fused |
+| **Vocabulary** | The controlled vocabulary / evidence terms per domain |
+| **Synonyms** | Layman/synonym matching demo — casual phrasing → signals |
+| **Live Learning** | The system learning from human corrections in place |
+| **Self-Correct** | Correct a misroute once; it never repeats that phrasing |
+| **Data Gen** | Synthetic ticket generation |
+| **External** | Evaluation against the real external (Zenodo) test set |
+| **Audit** | Audit log / governance view |
+| **Improve** | The agentic retraining loop (LangGraph) |
+
+---
+
+## Data
+
+- **Synthetic training corpus** (`data/real_3000.csv`) — a synthetic, balanced corpus of 2,996 tickets (428 per domain × 7), used for training and held-out evaluation. *(The filename is historical; the data is synthetic.)*
+- **Real external test set** (Zenodo, `external_test/`) — a genuinely real, independently-sourced set of 214 tickets used as an out-of-distribution check.
+
+---
+
+## Tech stack
+
+| Layer | Tooling |
+|---|---|
+| Classifiers | scikit-learn (LinearSVC + TF-IDF, kNN), DeterministicScorer |
+| Imbalance fix | imbalanced-learn (SMOTE) |
+| Embeddings | BGE-M3 (sentence-transformers) |
+| Vector store | Qdrant (in-memory) |
+| LLM | Mistral-7B (Q8) via Ollama, local |
+| Orchestration | LangGraph (the Improve loop) |
+| Retrieval | BM25 + semantic + Graph-RAG, reciprocal-rank fusion |
+| Security | Fernet / AES-128-CBC, RBAC, audit trail |
+| Web | FastAPI + uvicorn |
+| Runtime | Python 3.11 |
+
+---
+
+## Setup & run
+
+```bash
+# 1. install
 python -m venv .venv
-.venv\Scripts\activate            # Windows  (Linux/macOS: source .venv/bin/activate)
+.venv\Scripts\activate          # Windows  (use: source .venv/bin/activate on macOS/Linux)
 pip install -r requirements.txt
-ollama pull mistral:7b-instruct-q8_0    # for the local LLM tiebreak layer
+
+# 2. local LLM (for the rare tie-break) — install Ollama separately, then:
+ollama pull mistral:7b-instruct-q8_0
+
+# 3. run the web app  (serves the Console at http://127.0.0.1:8000/)
+python web/server.py
+
+# 4. run the agentic improve loop (optional, also available from the Improve tab)
+python improvement/agentic_retrain.py
 ```
 
-## Running
+---
 
-```
-python web/server.py                                   # live demo (all tabs)
-python hybrid/hybrid_retrieval.py --in data/real_3000.csv --fast   # hybrid retrieval
-python scripts/check_everything.py                     # full system check (15/15)
-python scripts/eval_corpus.py --in data/real_3000.csv  # accuracy on the corpus
-python security/run_demo.py                            # security controls
+## Testing
+
+```bash
+pytest
 ```
 
-## Project Structure
+92 unit tests across 16 files cover the classifiers, scorer, resolver ladder, vocabulary/self-correction guards, and supporting modules.
+
+---
+
+## Repository layout
 
 ```
-src/sentineldesk/   core pipeline (classifier, vocabulary, safety, rag, pipeline, learning)
-scripts/            evaluation, training, demo scripts
-tests/              92 unit tests (16 files)
-web/                console + explain + hybrid + vocab + synonyms + learn + audit + correct + external + datagen + server
-hybrid/             hybrid retrieval (BM25 + BGE-M3/Qdrant + Graph RAG + RRF)
-semantic/           semantic edge-case fallback
-optimizer/          adaptive keyword/prompt optimization (held-out evaluation)
-security/           PII redaction, encryption, RBAC
-external_test/      validation on real public (Zenodo) tickets
-data/               corpora + trained model
+src/sentineldesk/
+  classifier/      resolver (the ladder), scorer, svm, knn, explainability
+  vocabulary/      controlled vocabulary + self-correction
+  safety/          guards, PII, encryption
+  rag/             graph_rag
+  retrieval/       BM25 / semantic / fusion
+  pipeline/        orchestrator, langgraph_app
+  data_gen/        synthetic ticket generation
+  learning/        live learning from corrections
+  llm/             Mistral tie-break client
+  models/          data contracts
+improvement/
+  agentic_retrain.py   the LangGraph improve loop  (writes only to improvement/out/)
+web/                   FastAPI server + the self-contained tab HTML
+tests/                 92 tests / 16 files
+data/                  synthetic corpus + trained model
+external_test/         real Zenodo set
 ```
 
-## Validation
+---
 
-- **Real public tickets (Zenodo):** Network 99%, Access Management 75%, combined 89.2% on the clear-signal slice — the real-world generalization evidence (an honest, optimistic slice, not whole-dataset accuracy).
-- **Synthetic in-domain corpus (2,996 tickets):** ~98% — a measure of robustness to in-domain phrasing, not field accuracy.
-- **Tier split (LLM off):** confident SVM 92.8% @1.00 · voter ladder 6.8% @0.77 · escalate 0.3%. With Ollama on, genuine 3-way splits in that 0.3% get a bounded LLM tiebreak first.
-- **Synonym ablation (offline):** dormant on canonical text (0.98 → 0.98), load-bearing on casual text (0.42 → 1.00).
-- **Tests:** 92 unit · 15/15 functional system checks · 6 security tests.
+## Honest framing
 
-## Limitations (stated honestly)
-
-- Training and primary evaluation use synthetic data (LLM-generated from a seed lexicon), which is near-canonical; the ~98% shows robustness to phrasing of in-domain concepts, and the Zenodo result is the real-generalization evidence on the readable subset.
-- The classification core is lexical-first; semantic search runs as a hybrid/fallback layer, not the primary classifier.
-- The orchestration is implemented as both a LangGraph StateGraph and a dependency-free serial pipeline; the demo runs the dependency-free path for portability (no external orchestration dependency required).
-- Graph-RAG resolution coverage is ~67% of root causes; the rest escalate.
-- Low-signal tickets can drift toward a Network/Access-Management bias, mitigated by the confidence gate (escalation).
-- Security: PII redaction / encryption-at-rest / RBAC implemented; Vault and mTLS are deployment-layer; Presidio NER is on the roadmap.
-
-## Author
-
-Mrinal Desai — linkedin.com/in/mrinal-d-30093134
-
-Built for the AI-Code-Sarathi / NASSCOM Agentic AI Hackathon 2026.
+- The training corpus is **synthetic**; the Zenodo set is the genuinely real, out-of-distribution check.
+- The LLM is **rare by design** — it only arbitrates the small disagreement band, which is why ~99.6% of routing is deterministic.
+- Layman/synonym handling is an **evidence signal inside the scorer**, not a pre-routing rewrite.
+- The live router runs the deterministic ladder on a fast serial path; the **Improve loop** is the part that is genuinely LangGraph-orchestrated end to end, with a real conditional edge that decides its own path.
+- The Improve loop genuinely **declines to change a healthy model** — that restraint is a feature, not a limitation.

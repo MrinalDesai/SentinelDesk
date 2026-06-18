@@ -297,7 +297,7 @@ async function loadSources(){
   loaded.edge=true;
 }
 
-fetch(API+'/api/tickets').then(r=>r.json()).then(()=>{$('status').textContent='ready - four data files, four sub-tabs';})
+fetch(API+'/api/tickets').then(r=>r.json()).then(()=>{$('status').textContent='      ready - four data files, four sub-tabs';})
   .catch(()=>{$('status').innerHTML='<span style="color:var(--red)">backend not running</span>';});
 </script>
 </body>

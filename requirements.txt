@@ -3,6 +3,7 @@ pydantic>=2.6
 
 # --- Deterministic NLP / ML spine ---
 scikit-learn>=1.4
+imbalanced-learn>=0.14       # SMOTE oversampling (agentic improve loop)
 nltk>=3.8
 rank-bm25>=0.2
 

@@ -690,6 +690,23 @@ def external_page():
     return html.read_text(encoding="utf-8") if html.exists() else "<h1>external.html missing</h1>"
 
 
+@app.get("/improve", response_class=HTMLResponse)
+def improve_page():
+    html = (ROOT / "web" / "improve.html")
+    return html.read_text(encoding="utf-8") if html.exists() else "<h1>improve.html missing</h1>"
+
+
+@app.post("/api/improve/run")
+def improve_run(induce: bool = True):
+    """Run the agentic retraining loop (improvement/agentic_retrain.py) and
+    return every agent's output. Isolated: reads data read-only, writes only to
+    improvement/out/, never touches the production model or live router."""
+    import sys
+    sys.path.insert(0, str(ROOT))
+    from improvement.agentic_retrain import run_and_collect
+    return JSONResponse(run_and_collect(induce))
+
+
 @app.get("/api/datagen_sources")
 def api_datagen_sources():
     """Real example content for each of the four data files, read from the actual
